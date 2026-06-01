@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>What 2 Eat</title>
+    <script>
+      if (window.location.protocol === "file:") {
+        window.location.replace("http://127.0.0.1:5191/index.html");
+      }
+      window.addEventListener("error", (event) => {
+        document.documentElement.dataset.bootError = event?.message || "app error";
+      });
+    </script>
+    <link rel="stylesheet" href="styles.css?v=heic-texas-chili" />
+  </head>
+  <body>
+    <div class="phone-shell">
+      <div class="app-shell">
+        <header class="app-header">
+          <div class="brand">
+            <div class="brand-mark">W2E</div>
+            <div>
+              <h1>What 2 Eat</h1>
+            </div>
+          </div>
+        </header>
+
+        <main class="main-content">
+          <section class="view active" id="dashboard">
+            <div class="eat-screen">
+              <div>
+                <p class="eyebrow">Eat</p>
+                <h2>What sounds good?</h2>
+                <p id="profileSummary">Build your Dine DNA to start matching meals.</p>
+              </div>
+
+              <div class="big-choice-grid">
+                <button class="big-choice" id="openScan" data-view-target="scan" onclick="window.__w2eSetView && window.__w2eSetView('scan')" type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7V5a1 1 0 0 1 1-1h2" />
+                    <path d="M17 4h2a1 1 0 0 1 1 1v2" />
+                    <path d="M20 17v2a1 1 0 0 1-1 1h-2" />
+                    <path d="M7 20H5a1 1 0 0 1-1-1v-2" />
+                    <path d="M8 9h8" />
+                    <path d="M8 13h8" />
+                    <path d="M8 17h5" />
+                  </svg>
+                  <span>Scan Menu</span>
+                  <small>Use a menu photo</small>
+                </button>
+
+                <button class="big-choice" id="openSearch" data-view-target="search" onclick="window.__w2eSetView && window.__w2eSetView('search')" type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 21s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z" />
+                    <circle cx="12" cy="9" r="2.5" />
+                  </svg>
+                  <span>Find Nearby</span>
+                  <small>Search restaurants</small>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" id="scan">
+            <div class="scanner-screen">
+              <div class="camera-view">
+                <video id="cameraPreview" playsinline autoplay muted></video>
+                <div class="camera-fallback" id="cameraFallback">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7V5a1 1 0 0 1 1-1h2" />
+                    <path d="M17 4h2a1 1 0 0 1 1 1v2" />
+                    <path d="M20 17v2a1 1 0 0 1-1 1h-2" />
+                    <path d="M7 20H5a1 1 0 0 1-1-1v-2" />
+                    <path d="M8 12h8" />
+                  </svg>
+                  <span>Camera ready</span>
+                </div>
+                <div class="scanner-topbar">
+                  <button class="scanner-back" data-back type="button" aria-label="Back">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M18 6L6 18" />
+                      <path d="M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <div class="scan-mode-pill" aria-label="Camera ready">
+                    <span></span>
+                  </div>
+                  <button class="scanner-next" id="nextFromCamera" type="button" disabled aria-label="Next">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="scanner-hint">
+                  <strong id="scannerStatus">Ready for next scan.</strong>
+                </div>
+              </div>
+
+              <div class="scanner-bottom">
+                <label class="scan-count-card" aria-label="Add from photos">
+                  <input id="menuImage" type="file" accept="image/*,.pdf" multiple />
+                  <strong id="photoCount">0</strong>
+                  <div class="photo-thumbs" id="photoThumbs"></div>
+                </label>
+                <button class="shutter-button" id="capturePhoto" type="button" aria-label="Take photo"></button>
+                <button class="scanner-tool bottom-flash" id="flashToggle" type="button" aria-label="Flash">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8Z" />
+                  </svg>
+                  <span>Flash</span>
+                </button>
+              </div>
+
+            </div>
+          </section>
+
+          <section class="view" id="scan-loading">
+            <button class="back-button" data-back type="button" aria-label="Back" title="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div class="loading-screen">
+              <p class="eyebrow">Reading menu text</p>
+              <h2>Cooking up your custom menu</h2>
+              <p>We’re reading the photo and matching dishes to your Dine DNA.</p>
+              <div class="progress-track">
+                <div class="progress-bar"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" id="scan-results">
+            <button class="back-button" data-back type="button" aria-label="Back" title="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div class="scan-results-intro">
+              <p class="eyebrow">From your menu</p>
+              <h2 id="scanMenuTitle">Menu scan</h2>
+              <p id="scanVerdictPrimary">We looked at the menu and found a few solid options.</p>
+              <p id="scanVerdictSecondary">Some items may need edits, and we broke down the full menu below.</p>
+            </div>
+            <div class="scan-order-builder">
+              <div class="scan-order-list" id="scanOrderList"></div>
+            </div>
+            <div class="menu-section-list" id="menuSectionList"></div>
+          </section>
+
+          <section class="view" id="search">
+            <div class="page-kicker">
+              <button class="back-button" data-back type="button" aria-label="Back" title="Back">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+              <p class="eyebrow">Search Restaurants</p>
+            </div>
+            <div class="section-header section-header-compact">
+              <h2>Find a place</h2>
+            </div>
+
+            <div class="search-row">
+              <input id="restaurantSearch" placeholder="Restaurant or cuisine" />
+              <select id="compatibilityFilter">
+                <option value="all">All</option>
+                <option value="high">High confidence</option>
+                <option value="medium">Needs confirmation</option>
+              </select>
+            </div>
+
+            <div class="restaurant-list" id="restaurantList"></div>
+          </section>
+
+          <section class="view" id="saved">
+            <button class="back-button" data-back type="button" aria-label="Back" title="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div class="section-header">
+              <p class="eyebrow">Saved Meals</p>
+              <h2>Saved orders</h2>
+            </div>
+            <div class="saved-orders" id="savedOrders"></div>
+            <div class="saved-list" id="savedMeals"></div>
+          </section>
+
+          <section class="view" id="profile">
+            <button class="back-button" data-back type="button" aria-label="Back" title="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div class="section-header">
+              <p class="eyebrow">Profile</p>
+              <h2>Tailor My Taste</h2>
+              <p>Tell us how you eat so we can recommend meals for you.</p>
+            </div>
+            <form class="profile-form" id="profileForm">
+              <label>
+                Name
+                <input id="userName" name="userName" autocomplete="name" placeholder="Justice" />
+              </label>
+
+              <fieldset>
+                <legend>Your Eating Style</legend>
+                <p class="field-help">How you usually like to eat.</p>
+                <div class="chip-grid" id="eatingStyleChips"></div>
+              </fieldset>
+
+              <fieldset>
+                <legend>Foods I Thrive Without</legend>
+                <p class="field-help">Choose all that apply.</p>
+                <div class="chip-grid" id="avoidFoodChips"></div>
+              </fieldset>
+
+              <fieldset>
+                <legend>Things I Love To Eat</legend>
+                <p class="field-help">Pick favorites so recommendations feel like you.</p>
+                <div class="chip-grid" id="loveFoodChips"></div>
+              </fieldset>
+
+              <fieldset>
+                <legend>Foods You’re Less Into</legend>
+                <p class="field-help">We’ll keep these lower in your recommendations.</p>
+                <div class="chip-grid" id="dontLoveFoodChips"></div>
+              </fieldset>
+
+              <fieldset>
+                <legend>Goals That Fuel You Best</legend>
+                <p class="field-help">Choose all that apply.</p>
+                <div class="chip-grid" id="healthNeedChips"></div>
+              </fieldset>
+
+              <button class="primary-action" type="submit">Save Dine DNA</button>
+            </form>
+          </section>
+        </main>
+
+        <nav class="bottom-nav" aria-label="Primary navigation">
+          <button class="nav-item" data-view="saved" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+            </svg>
+            <span>Saved</span>
+          </button>
+          <button class="nav-item active eat-tab" data-view="dashboard" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 3v18" />
+              <path d="M14 3v18" />
+              <path d="M18 3v6a4 4 0 0 1-4 4" />
+            </svg>
+            <span>Eat</span>
+          </button>
+          <button class="nav-item" data-view="profile" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 21a8 8 0 0 0-16 0" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            <span>Profile</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <script src="app.js?v=heic-texas-chili"></script>
+  </body>
+</html>
