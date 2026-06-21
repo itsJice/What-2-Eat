@@ -1753,6 +1753,63 @@ textarea {
   font-size: 0.98rem;
 }
 
+.scan-debug-details {
+  background: #f7fbf8;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin-bottom: 0.9rem;
+  padding: 0.85rem 0.95rem;
+}
+
+.scan-debug-details summary {
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 900;
+  margin-bottom: 0.45rem;
+}
+
+.scan-debug-details div + div {
+  margin-top: 0.25rem;
+}
+
+.scan-failure-help {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 0.95rem;
+  padding: 1rem;
+}
+
+.scan-failure-help h3 {
+  color: var(--ink);
+  font-size: 1.35rem;
+  line-height: 1.08;
+  margin-bottom: 0.55rem;
+}
+
+.scan-failure-help p,
+.scan-failure-help li {
+  color: var(--muted);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.42;
+}
+
+.scan-failure-help ul {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.9rem 0 1rem;
+  padding-left: 1.1rem;
+}
+
+.scan-failure-help .primary-action {
+  width: 100%;
+}
+
 .bottom-nav {
   position: absolute;
   right: 0;

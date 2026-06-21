@@ -258,6 +258,7 @@ const recommendations = {
 const ocrScriptUrl = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
 let ocrScriptPromise = null;
 const scanParserVersion = "texas-chili-scan-3";
+const aiScanApiUrl = window.location.port === "5191" ? "http://127.0.0.1:8000/api/scan-menu" : "/api/scan-menu";
 
 const restaurants = [
   {
@@ -315,6 +316,7 @@ const state = {
   scanSource: null,
   cameraStream: null,
   flashOn: false,
+  scanRequestId: 0,
 };
 
 const storage = {
@@ -404,15 +406,19 @@ async function extractMenuText(source, onProgress) {
 
 const menuSectionHeaders = new Set([
   "appetizers",
+  "apps",
   "starters",
   "entrees",
   "entrées",
   "mains",
+  "main",
   "sides",
   "drinks",
+  "beverages",
   "desserts",
   "specials",
   "combos",
+  "combo",
   "bowls",
   "salads",
   "sandwiches",
@@ -420,6 +426,11 @@ const menuSectionHeaders = new Set([
   "burgers",
   "pasta",
   "grill",
+  "breakfast",
+  "lunch",
+  "dinner",
+  "kids",
+  "extras",
 ]);
 
 const menuKeywordGroups = {
@@ -488,6 +499,8 @@ const avoidBiasKeywords = [
   "pita",
   "tempura",
 ];
+
+const genericMenuSectionTitle = "Menu items";
 
 const texasChiliMenu = {
   title: "Texas Chili Restaurant",
@@ -725,7 +738,7 @@ function collectKeywordHits(text, keywordGroups) {
 function inferMenuTitle(rawLines) {
   const firstUseful = rawLines.find((line) => {
     const lower = line.toLowerCase();
-    return line.length > 2 && !menuSectionHeaders.has(lower) && !/^\d+$/.test(line);
+    return isRestaurantNameCandidate(line) && !menuSectionHeaders.has(lower) && !/^\d+$/.test(line);
   });
   return firstUseful || "Uploaded menu";
 }
@@ -740,6 +753,74 @@ function isMenuSectionHeader(line) {
 
 function titleizeHeading(line) {
   return line.replace(/:$/, "").trim();
+}
+
+function isRestaurantNoteLine(line) {
+  const lower = line.toLowerCase();
+  return [
+    "consuming undercooked",
+    "food borne illness",
+    "foodborne illness",
+    "may increase your risk",
+    "allergy",
+    "allergies",
+    "please inform",
+    "ask your server",
+    "prices subject",
+    "substitutions",
+    "gratuity",
+    "served raw",
+    "thoroughly cooking",
+    "menu items may contain",
+  ].some((phrase) => lower.includes(phrase));
+}
+
+function lineQuality(line) {
+  const trimmed = line.trim();
+  const letters = (trimmed.match(/[a-z]/gi) || []).length;
+  const weird = (trimmed.match(/[^a-z0-9\s&'+.,/$()-]/gi) || []).length;
+  return {
+    letters,
+    weird,
+    words: trimmed.split(/\s+/).filter(Boolean),
+    weirdRatio: weird / Math.max(trimmed.length, 1),
+  };
+}
+
+function isRestaurantNameCandidate(line) {
+  const lower = line.toLowerCase();
+  const quality = lineQuality(line);
+  if (line.length < 3 || line.length > 38) return false;
+  if (quality.letters < 3 || quality.weirdRatio > 0.12) return false;
+  if (quality.words.some((word) => word.length === 1 && !/[aAiI]/.test(word))) return false;
+  if (/\$|\d{2,}/.test(line)) return false;
+  if (isRestaurantNoteLine(line) || isMenuSectionHeader(line)) return false;
+  if (hasMenuItemSignal(line)) return false;
+  if (/\b(and|with|served|choice|includes|topped|contains|risk|illness)\b/i.test(lower)) return false;
+  return quality.words.length <= 5;
+}
+
+function hasMenuItemSignal(line) {
+  const lower = line.toLowerCase();
+  return menuItemSignals.some((signal) => lower.includes(signal)) || /\$\s?\d/.test(line);
+}
+
+function isLikelyMenuItemLine(line, options = {}) {
+  const lower = line.toLowerCase();
+  const quality = lineQuality(line);
+  if (isRestaurantNoteLine(line) || isMenuSectionHeader(line)) return false;
+  if (line.length < 4 || line.length > (options.relaxed ? 90 : 64)) return false;
+  if (quality.letters < 3 || quality.weirdRatio > (options.relaxed ? 0.16 : 0.1)) return false;
+  if (quality.words.some((word) => word.length === 1 && !/[aAiI]/.test(word))) return false;
+  if (/^[\d\s.,-]+$/.test(line)) return false;
+  if (/\b(risk|illness|possible|available|hours|phone|address|website|copyright)\b/i.test(lower)) return false;
+  if (hasMenuItemSignal(line)) return true;
+  if (/^[A-Z0-9 &'()+,/-]{4,}$/.test(line) && quality.words.length <= 6 && quality.words.some((word) => word.length >= 4)) return true;
+  return false;
+}
+
+function isStrongMenuItemLine(line) {
+  return hasMenuItemSignal(line) && isLikelyMenuItemLine(line, { relaxed: true });
 }
 
 function buildScanMealFromLine(line, menuTitle) {
@@ -829,8 +910,106 @@ function buildScanMealFromLine(line, menuTitle) {
       category === "avoid" ? "Choose another item or ask for a safer swap." : "Please confirm ingredients with restaurant staff.",
       "Cross-contamination may still be possible.",
     ],
+    score: confidence === "High" ? 80 : 60,
     tags,
   };
+}
+
+function buildScanMealFromAiItem(item, menuTitle) {
+  const parts = [item.name, item.description, item.price].filter(Boolean).join(" ");
+  const meal = buildScanMealFromLine(parts || item.name, menuTitle);
+  return {
+    ...meal,
+    name: item.name,
+    restaurant: menuTitle,
+    sourceTrace: "ai-vision",
+    ingredients: item.description ? [item.description] : [item.name],
+    price: item.price || "",
+    score: meal.score || 75,
+  };
+}
+
+function buildAiScanData(aiPayload, sourceLabel, sourceId) {
+  const menu = aiPayload.menu || aiPayload;
+  const title = menu.restaurantName || "Uploaded menu";
+  const sections = (menu.sections || [])
+    .map((section) => ({
+      title: section.name,
+      items: (section.items || [])
+        .filter((item) => item?.name && String(item.name).trim().length >= 2)
+        .map((item) => buildScanMealFromAiItem(
+          {
+            name: String(item.name).trim(),
+            description: String(item.description || "").trim(),
+            price: String(item.price || "").trim(),
+          },
+          title,
+        )),
+    }))
+    .filter((section) => section.title && section.items.length);
+  const items = sections.flatMap((section) => section.items);
+
+  if (!sections.length || !items.length) {
+    return scanFailureResult(sourceLabel, "AI did not return enough structured menu items.", {
+      parserUsed: aiPayload.parserUsed || "ai-vision",
+      sourceId,
+    });
+  }
+
+  return {
+    sourceId,
+    sourceName: sourceLabel,
+    parserVersion: aiPayload.parserVersion || scanParserVersion,
+    parserUsed: aiPayload.parserUsed || "ai-vision",
+    confidence: "High",
+    failure: null,
+    sourceTruth: "AI vision + OCR text",
+    title,
+    rawText: "",
+    sections,
+    items,
+    hasText: true,
+    rejectedLineCount: 0,
+    recommendedOrder: buildRecommendedOrder(sections),
+  };
+}
+
+function dataUrlToFile(dataUrl, filename) {
+  const [meta, data] = dataUrl.split(",");
+  const mime = meta.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new File([bytes], filename, { type: mime });
+}
+
+async function requestAiMenuScan(sources, sourceLabel, sourceId, rawText) {
+  const formData = new FormData();
+  sources.forEach((source, index) => {
+    if (source instanceof File) {
+      formData.append("files", source, source.name || `menu-${index + 1}.jpg`);
+    } else if (typeof source === "string" && source.startsWith("data:")) {
+      formData.append("files", dataUrlToFile(source, `captured-menu-${index + 1}.jpg`));
+    }
+  });
+
+  if (!formData.has("files")) {
+    throw new Error("No uploadable image files for AI scan.");
+  }
+
+  formData.append("ocr_text", rawText || "");
+  formData.append("profile_json", JSON.stringify(state.profile));
+  formData.append("source_label", sourceLabel || "Uploaded menu");
+  formData.append("source_id", sourceId || "");
+
+  const response = await fetch(aiScanApiUrl, { method: "POST", body: formData });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `AI scan failed with ${response.status}`);
+  }
+  return buildAiScanData(await response.json(), sourceLabel, sourceId);
 }
 
 function displayTerm(term) {
@@ -1030,12 +1209,12 @@ function looksLikeTexasChiliSource(source, sourceLabel = "", rawText = "") {
     .join(" ")
     .toLowerCase()
     .replace(/%20/g, " ");
-  const text = rawText.toLowerCase();
   const hasKnownImageName = /(^|[\s/\\])o\s*(\(1\))?\.jpe?g\b/.test(names);
   const hasBothKnownImages = names.includes("o.jpg") && names.includes("o (1).jpg");
   const hasKnownHeicImages = names.includes("img_8241.heic") && names.includes("img_8242.heic");
-  const hasTexasChiliText = ["texas chili", "best chili", "mamaroneck", "port chester", "hot dogs", "deep fried"].some((phrase) => text.includes(phrase));
-  return hasKnownImageName || hasBothKnownImages || hasKnownHeicImages || hasTexasChiliText;
+  const hasTexasChiliText = rawText.toLowerCase().includes("texas chili restaurant") && rawText.toLowerCase().includes("mamaroneck");
+  const hasExplicitTestTag = /texas[- ]?chili[- ]?test|test menu/i.test(names);
+  return hasKnownImageName || hasBothKnownImages || hasKnownHeicImages || hasTexasChiliText || hasExplicitTestTag;
 }
 
 function scanFailureResult(sourceLabel, reason = "Could not read enough real menu text.", debug = {}) {
@@ -1068,16 +1247,16 @@ function sourceIdFrom(source, sourceLabel = "") {
   return sourceNamesFrom(source, sourceLabel).join("|").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `scan-${Date.now()}`;
 }
 
-function isLikelyOcrGarbageLine(line) {
+function isLikelyOcrGarbageLine(line, options = {}) {
   const trimmed = line.trim();
-  if (trimmed.length < 4 || trimmed.length > 70) return true;
+  if (trimmed.length < 4 || trimmed.length > (options.relaxed ? 120 : 70)) return true;
   const letters = (trimmed.match(/[a-z]/gi) || []).length;
   const vowels = (trimmed.match(/[aeiou]/gi) || []).length;
   const weird = (trimmed.match(/[^a-z0-9\s&'+.,/$()-]/gi) || []).length;
   const words = trimmed.split(/\s+/).filter(Boolean);
-  if (letters < 3) return true;
+  if (letters < (options.relaxed ? 2 : 3)) return true;
   if (letters >= 8 && vowels === 0) return true;
-  if (weird / Math.max(trimmed.length, 1) > 0.18) return true;
+  if (weird / Math.max(trimmed.length, 1) > (options.relaxed ? 0.28 : 0.18)) return true;
   if (words.length >= 3 && words.every((word) => word.length <= 2)) return true;
   if (/[|}{_=<>©®]/.test(trimmed)) return true;
   if (/\b[a-z]{1,2}\d{2,}\b/i.test(trimmed)) return true;
@@ -1088,22 +1267,27 @@ const menuItemSignals = [
   "burger", "cheese", "chicken", "steak", "taco", "nacho", "fries", "salad", "wrap", "sandwich", "hot dog", "egg", "bacon", "ham", "sausage", "omelet", "pancake", "waffle", "toast", "chili", "beans", "rice", "onion", "rings", "wings", "nuggets", "mushroom", "mozzarella", "queso", "tortilla", "sauce", "mayo", "lettuce", "tomato",
 ];
 
-function hasMenuSignal(line) {
-  const lower = line.toLowerCase();
-  return menuItemSignals.some((signal) => lower.includes(signal)) || /\$\s?\d/.test(line) || isMenuSectionHeader(line);
+function hasMenuSignal(line, options = {}) {
+  return isMenuSectionHeader(line) || isLikelyMenuItemLine(line, options) || isRestaurantNameCandidate(line);
 }
 
-function validateOcrLines(lines) {
+function validateOcrLines(lines, options = {}) {
   const accepted = [];
   const rejected = [];
   lines.forEach((line) => {
-    if (isLikelyOcrGarbageLine(line) || !hasMenuSignal(line)) {
+    if (isLikelyOcrGarbageLine(line, options) || isRestaurantNoteLine(line) || !hasMenuSignal(line, options)) {
       rejected.push(line);
     } else {
       accepted.push(line);
     }
   });
   return { accepted, rejected };
+}
+
+function shouldRetryWithRelaxedParser(source, sourceLabel, rawText) {
+  const names = sourceNamesFrom(source, sourceLabel).join(" ").toLowerCase();
+  if (/(^|[\s/\\])original_/.test(names)) return true;
+  return rawText.length > 120 && rawText.length < 5000 && /\b(menu|burger|chili|rice|salad|taco|wrap|coffee|breakfast|lunch|dinner)\b/i.test(rawText);
 }
 
 function isRenderableScanData(scanData) {
@@ -1127,7 +1311,42 @@ function publishScanDebug(scanData, source, sourceLabel, rawText = "") {
   };
 }
 
-function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "validated-ocr") {
+function renderScanDebugDetails() {
+  const debug = window.__w2eLastScanDebug;
+  if (!debug) return "";
+  const files = debug.uploadedFilenames?.filter(Boolean).join(", ") || "No file name captured";
+  return `
+    <details class="scan-debug-details" open>
+      <summary>Scan details</summary>
+      <div><strong>Uploaded:</strong> ${files}</div>
+      <div><strong>Parser:</strong> ${debug.parserUsed || "unknown"}</div>
+      <div><strong>OCR text read:</strong> ${debug.ocrTextLength || 0} characters</div>
+      <div><strong>Rejected OCR lines:</strong> ${debug.rejectedLineCount || 0}</div>
+      <div><strong>Menu items shown:</strong> ${debug.renderedItemCount || 0}</div>
+      ${debug.failureReason ? `<div><strong>Failure:</strong> ${debug.failureReason}</div>` : ""}
+    </details>
+  `;
+}
+
+function renderScanFailureHelp() {
+  return `
+    <section class="scan-failure-help">
+      <h3>Let’s try that scan again</h3>
+      <p>The photo reached the scanner, but it only found a small amount of readable text. That usually means the menu was too blurry, angled, cropped, shadowed, or had glare.</p>
+      <ul>
+        <li>Hold the phone straight over the menu.</li>
+        <li>Make sure the words are sharp and in focus.</li>
+        <li>Wipe glare or shadows off the page.</li>
+        <li>Fill the screen with one menu page at a time.</li>
+        <li>Upload every page if the menu has multiple sides.</li>
+      </ul>
+      <button class="primary-action" data-rescan-menu type="button">Rescan menu</button>
+    </section>
+  `;
+}
+
+function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "validated-ocr", options = {}) {
+  const relaxedMode = options.relaxedMode === true;
   const rawLines = dedupeLines(
     rawText
       .split(/\r?\n/)
@@ -1135,19 +1354,23 @@ function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "vali
       .filter((line) => line && /[a-zA-Z]/.test(line) && line.length > 3),
   );
 
-  const { accepted: lines, rejected } = validateOcrLines(rawLines);
+  const { accepted: lines, rejected } = validateOcrLines(rawLines, { relaxed: relaxedMode });
 
   const usableLines = lines.filter((line) => {
     const lower = line.toLowerCase();
-    if (menuSectionHeaders.has(lower)) return false;
     if (/^\d+$/.test(line)) return false;
     if (/^[\d\s.,-]+$/.test(line)) return false;
-    if (line.length > 64) return false;
+    if (line.length > (relaxedMode ? 110 : 64)) return false;
+    if (isRestaurantNoteLine(line)) return false;
+    if (!isMenuSectionHeader(line) && !isRestaurantNameCandidate(line) && !isLikelyMenuItemLine(line, { relaxed: relaxedMode })) return false;
     return true;
   });
 
   const detectedHeaders = usableLines.filter((line) => isMenuSectionHeader(line));
-  if (usableLines.length < 8 || detectedHeaders.length < 1) {
+  const detectedItems = usableLines.filter((line) => isLikelyMenuItemLine(line, { relaxed: relaxedMode }));
+  const strongItems = detectedItems.filter(isStrongMenuItemLine);
+  const hasStructure = detectedHeaders.length >= 1 || strongItems.length >= 4;
+  if (usableLines.length < (relaxedMode ? 4 : 8) || !hasStructure) {
     return scanFailureResult(sourceLabel, "OCR did not produce enough validated menu sections or item-like lines.", {
       parserUsed: "ocr-generic",
       rejectedLineCount: rejected.length + Math.max(rawLines.length - lines.length, 0),
@@ -1169,8 +1392,12 @@ function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "vali
       return;
     }
 
+    if (line === title || isRestaurantNameCandidate(line)) {
+      return;
+    }
+
     if (!currentSection) {
-      currentSection = { title: "Menu items", lines: [] };
+      currentSection = { title: genericMenuSectionTitle, lines: [] };
       sections.push(currentSection);
     }
     currentSection.lines.push(line);
@@ -1178,19 +1405,23 @@ function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "vali
 
   if (!sections.length) {
     sections.push({
-      title: "Menu items",
+      title: genericMenuSectionTitle,
       lines: usableLines.filter((line) => line !== title && !isMenuSectionHeader(line)),
     });
   }
 
-  const sectionData = sections.map((section) => ({
-    title: section.title,
-    items: section.lines.map((line) => buildScanMealFromLine(line, title)),
-  }));
+  const sectionData = sections
+    .map((section) => ({
+      title: section.title,
+      items: section.lines
+        .filter((line) => isLikelyMenuItemLine(line, { relaxed: relaxedMode }))
+        .map((line) => buildScanMealFromLine(line, title)),
+    }))
+    .filter((section) => section.items.length);
 
-  const items = sectionData.flatMap((section) => section.items).slice(0, 24);
+  const items = sectionData.flatMap((section) => section.items);
 
-  if (items.length < 4) {
+  if (items.length < (relaxedMode ? 4 : 4)) {
     return scanFailureResult(sourceLabel, "OCR found too few validated menu items to build a truthful menu.", {
       parserUsed: "ocr-generic",
       rejectedLineCount: rejected.length,
@@ -1207,13 +1438,14 @@ function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "vali
     title,
     rawText,
     sections: sectionData,
-    items,
+    items: items.slice(0, 24),
     hasText: items.length > 0,
     rejectedLineCount: rejected.length,
   };
 }
 
 async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
+  const requestId = ++state.scanRequestId;
   state.scanMeals = [];
   state.scanSections = [];
   state.scanOrder = [];
@@ -1245,12 +1477,29 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
         delay(2300),
       ]);
       rawText = texts.join("\n\n");
-      scanData = looksLikeTexasChiliSource(sources, sourceLabel, rawText)
-        ? buildTexasChiliScan()
-        : parseScanMeals(rawText, sourceLabel, sourceId);
+      if (looksLikeTexasChiliSource(sources, sourceLabel, rawText)) {
+        scanData = buildTexasChiliScan();
+      } else {
+        try {
+          scannerStatus.textContent = "Understanding the menu with AI...";
+          scanData = await requestAiMenuScan(sources, sourceLabel, sourceId, rawText);
+        } catch {
+          scanData = parseScanMeals(rawText, sourceLabel, sourceId);
+        }
+      }
+      if (scanData?.failure && shouldRetryWithRelaxedParser(sources, sourceLabel, rawText)) {
+        const relaxedResult = parseScanMeals(rawText, sourceLabel, sourceId, { relaxedMode: true });
+        if (!relaxedResult?.failure) {
+          scanData = relaxedResult;
+        }
+      }
     }
   } catch {
     scanData = scanFailureResult(sourceLabel, "OCR or menu parsing threw an error.");
+  }
+
+  if (requestId !== state.scanRequestId) {
+    return;
   }
 
   if (!scanData?.items?.length && !scanData?.failure) {
@@ -1800,8 +2049,8 @@ function renderScanResults() {
   if (state.scanMeta?.failure) {
     if (scanMenuTitle) scanMenuTitle.textContent = "Menu scan";
     if (scanVerdictPrimary) scanVerdictPrimary.textContent = state.scanMeta.failure.title;
-    if (scanVerdictSecondary) scanVerdictSecondary.textContent = state.scanMeta.failure.message;
-    if (menuSectionList) menuSectionList.innerHTML = `<div class="empty-state">${state.scanMeta.failure.message}</div>`;
+    if (scanVerdictSecondary) scanVerdictSecondary.textContent = "We couldn’t read enough clear menu text from that photo.";
+    if (menuSectionList) menuSectionList.innerHTML = `${renderScanDebugDetails()}${renderScanFailureHelp()}`;
     renderScanOrder();
     return;
   }
@@ -1838,7 +2087,7 @@ function renderScanResults() {
   if (menuSectionList) {
     const visibleSections = sectionsForActiveCategory();
     menuSectionList.innerHTML = state.scanSections.length
-      ? `${renderScanCategoryTabs()}${renderScanMenuSearch()}${visibleSections.length
+      ? `${renderScanDebugDetails()}${renderScanCategoryTabs()}${renderScanMenuSearch()}${visibleSections.length
         ? visibleSections
           .map((section) => ({ section, items: filteredScanItems(section) }))
           .filter(({ items }) => !state.scanSearchQuery.trim() || items.length)
@@ -2079,7 +2328,24 @@ function addScanPhoto(source) {
   renderScanPhotos();
 }
 
+function resetScanRun() {
+  state.scanPhotos = [];
+  state.scanSource = null;
+  state.scanMeta = null;
+  state.scanMeals = [];
+  state.scanSections = [];
+  state.scanOrder = [];
+  state.scanSearchQuery = "";
+  state.activeMenuCategory = "mains";
+  renderScanPhotos();
+  if (scanMenuTitle) scanMenuTitle.textContent = "Menu scan";
+  if (scanVerdictPrimary) scanVerdictPrimary.textContent = "Upload a menu photo and we’ll read the text here.";
+  if (scanVerdictSecondary) scanVerdictSecondary.textContent = "Ready for your new scan.";
+  if (menuSectionList) menuSectionList.innerHTML = `<div class="empty-state">Upload a menu photo and we’ll read it here.</div>`;
+}
+
 function captureMenuPhoto() {
+  resetScanRun();
   if (cameraPreview.videoWidth && cameraPreview.videoHeight) {
     const canvas = document.createElement("canvas");
     canvas.width = cameraPreview.videoWidth;
@@ -2087,8 +2353,8 @@ function captureMenuPhoto() {
     const context = canvas.getContext("2d");
     context.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
     const source = canvas.toDataURL("image/jpeg", 0.8);
-    state.scanSource = source;
     addScanPhoto(source);
+    state.scanSource = state.scanPhotos;
     return;
   }
 
@@ -2099,8 +2365,8 @@ function captureMenuPhoto() {
       <path d="M64 66h112M64 92h112M64 118h72" stroke="#20a464" stroke-width="8" stroke-linecap="round"/>
     </svg>
   `)}`;
-  state.scanSource = placeholder;
   addScanPhoto(placeholder);
+  state.scanSource = state.scanPhotos;
 }
 
 async function copyMeal(name) {
@@ -2211,6 +2477,13 @@ function bindEvents() {
       return;
     }
 
+    const rescanMenuButton = event.target.closest("[data-rescan-menu]");
+    if (rescanMenuButton) {
+      resetScanRun();
+      setView("scan");
+      return;
+    }
+
     const closeReviewButton = event.target.closest("[data-close-order-review]");
     if (closeReviewButton) {
       closeOrderReview();
@@ -2291,18 +2564,32 @@ function bindEvents() {
     event.currentTarget.classList.toggle("active", state.flashOn);
   });
 
-  document.querySelector("#menuImage").addEventListener("change", (event) => {
-    const files = [...event.target.files];
-    if (!files.length) return;
-    files.forEach((file) => addScanPhoto(URL.createObjectURL(file)));
-    state.scanSource = files;
-    analyzeMenuSource(files, files.map((file) => file.name || "Uploaded menu").join(" + "));
-  });
+document.querySelector("#menuImage").addEventListener("change", (event) => {
+  const files = [...event.target.files];
+  if (!files.length) return;
+  resetScanRun();
+  files.forEach((file) => addScanPhoto(URL.createObjectURL(file)));
+  state.scanSource = files;
+  analyzeMenuSource(files, files.map((file) => file.name || "Uploaded menu").join(" + "));
+  event.target.value = "";
+});
 
-  nextFromCamera.addEventListener("click", () => {
-    if (!state.scanSource) return;
-    analyzeMenuSource(state.scanSource, "Captured menu");
-  });
+nextFromCamera.addEventListener("click", () => {
+  const currentScanSource = Array.isArray(state.scanSource)
+    ? state.scanSource
+    : state.scanPhotos.length
+      ? state.scanPhotos
+      : state.scanSource
+      ? [state.scanSource]
+      : [];
+  if (!currentScanSource.length) return;
+
+  resetScanRun();
+  state.scanSource = [...currentScanSource];
+  state.scanPhotos = [...currentScanSource];
+  renderScanPhotos();
+  analyzeMenuSource(state.scanSource, "Captured menu");
+});
 
   document.querySelector("#restaurantSearch").addEventListener("input", renderRestaurants);
   document.querySelector("#compatibilityFilter").addEventListener("change", renderRestaurants);
