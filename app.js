@@ -374,9 +374,39 @@ const productBarcode = document.querySelector("#productBarcode");
 const productResult = document.querySelector("#productResult");
 const productCameraWrap = document.querySelector("#productCameraWrap");
 const productCameraPreview = document.querySelector("#productCameraPreview");
+const appShell = document.querySelector(".app-shell");
+const mainContent = document.querySelector(".main-content");
 
 const viewHistory = ["dashboard"];
 const eatViews = ["dashboard", "scan", "scan-loading", "scan-results", "product-scan"];
+
+function syncVisualViewportVars() {
+  const root = document.documentElement;
+  const viewport = window.visualViewport;
+  const viewportHeight = viewport?.height || window.innerHeight || document.documentElement.clientHeight;
+  const viewportTop = viewport?.offsetTop || 0;
+  const bottomGap = viewport
+    ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+    : 0;
+
+  root.style.setProperty("--vvh", `${Math.round(viewportHeight)}px`);
+  root.style.setProperty("--vv-top", `${Math.round(viewportTop)}px`);
+  root.style.setProperty("--vv-bottom-gap", `${Math.round(bottomGap)}px`);
+}
+
+function scheduleVisualViewportSync() {
+  window.requestAnimationFrame(syncVisualViewportVars);
+}
+
+syncVisualViewportVars();
+window.visualViewport?.addEventListener("resize", scheduleVisualViewportSync);
+window.visualViewport?.addEventListener("scroll", scheduleVisualViewportSync);
+window.addEventListener("resize", scheduleVisualViewportSync);
+window.addEventListener("orientationchange", scheduleVisualViewportSync);
+
+mainContent?.addEventListener("scroll", () => {
+  appShell?.classList.toggle("content-scrolled", mainContent.scrollTop > 4);
+}, { passive: true });
 
 function readStoredJson(key, fallback) {
   try {
@@ -2090,8 +2120,9 @@ function setView(viewId, options = {}) {
   views.forEach((view) => view.classList.toggle("active", view.id === viewId));
   const activeNav = eatViews.includes(viewId) ? "dashboard" : viewId;
   navItems.forEach((item) => item.classList.toggle("active", item.dataset.view === activeNav));
-  document.querySelector(".main-content").scrollTop = 0;
-  document.querySelector(".app-shell").classList.toggle("scanner-active", viewId === "scan");
+  if (mainContent) mainContent.scrollTop = 0;
+  appShell?.classList.remove("content-scrolled");
+  appShell?.classList.toggle("scanner-active", viewId === "scan");
   rememberEatView(viewId);
 
   if (viewId === "scan") {
