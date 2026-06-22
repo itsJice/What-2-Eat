@@ -1,0 +1,11 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="96" fill="#FBFAF6"/>
+  <rect x="210" y="120" width="480" height="480" rx="108" fill="#1F2933"/>
+  <path d="M309 298H436C502 298 555 351 555 417C555 483 502 536 436 536H343" stroke="#D9F5DF" stroke-width="48" stroke-linecap="round"/>
+  <path d="M345 354L289 410L345 466" stroke="#D9F5DF" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M383 416L435 468L561 334" stroke="#20A464" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="315" cy="298" r="30" fill="#D9F5DF"/>
+  <circle cx="436" cy="536" r="30" fill="#20A464"/>
+  <text x="450" y="705" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="950" fill="#1F2933">Choice Path</text>
+  <text x="450" y="756" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="650" fill="#65717F">From menu question to order</text>
+</svg>

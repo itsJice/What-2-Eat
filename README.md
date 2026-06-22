@@ -63,6 +63,45 @@ The backend has an app-level hard stop: it refuses scans once the monthly cap wo
 
 Do not commit `.env`, `.venv`, `.ai_usage.json`, or API keys.
 
+## Install on Your Phone
+
+This app is now set up as a Progressive Web App. The practical path is:
+
+1. Deploy the app to an HTTPS URL.
+2. Open that URL on your phone.
+3. Add it to the Home Screen.
+
+### Deploy on Vercel
+
+Create a Vercel project from this repo and add these environment variables:
+
+```env
+OPENAI_API_KEY=sk-your-key-here
+OPENAI_MODEL=gpt-4.1-mini
+AI_MONTHLY_BUDGET_USD=5.00
+AI_MAX_COST_PER_SCAN_USD=0.03
+AI_SCAN_MOCK=0
+SPOONACULAR_API_KEY=
+```
+
+The included `vercel.json` routes the FastAPI app through `api/index.py`, so the frontend and `/api/*` endpoints are served from the same domain.
+
+For a first phone test without spending money, set:
+
+```env
+AI_SCAN_MOCK=1
+```
+
+### Add to iPhone Home Screen
+
+1. Open the deployed HTTPS URL in Safari.
+2. Tap Share.
+3. Tap Add to Home Screen.
+4. Confirm the name What 2 Eat.
+5. Launch it from the new Home Screen icon.
+
+Camera access requires HTTPS and a user permission prompt. The menu scanner uses live camera capture when available and also supports taking or uploading a photo through the file picker.
+
 ## Later Backend Needs
 
 - User accounts
@@ -73,3 +112,4 @@ Do not commit `.env`, `.venv`, `.ai_usage.json`, or API keys.
 - Image upload and storage
 - Restaurant search and maps
 - Online menu ingestion
+- Grocery-store barcode scan mode using Open Food Facts for packaged food lookup, ingredient labels, allergen traces, additives, and nutrition

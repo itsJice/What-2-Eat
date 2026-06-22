@@ -1,0 +1,175 @@
+<svg width="1500" height="980" viewBox="0 0 1500 980" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Refined What 2 Eat app logo icon concepts</title>
+  <desc id="desc">Five refined app logo icon concepts designed for clarity, memorability, and small-size recognition.</desc>
+  <rect width="1500" height="980" fill="#FBFAF6"/>
+  <style>
+    .ink-bg { fill: #1f2933; }
+    .ink { fill: #1f2933; }
+    .green { fill: #20a464; }
+    .leaf { fill: #7ccf8a; }
+    .mint { fill: #d9f5df; }
+    .white { fill: #ffffff; }
+    .line-card { fill: #ffffff; stroke: #dce3e8; stroke-width: 2; }
+    .label { font: 900 28px Inter, Arial, sans-serif; fill: #1f2933; text-anchor: middle; }
+    .note { font: 650 17px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+    .principle { font: 700 18px Inter, Arial, sans-serif; fill: #1f2933; }
+    .small { font: 800 12px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+  </style>
+
+  <text x="750" y="58" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="950" fill="#1f2933">What 2 Eat App Icon Directions</text>
+  <text x="750" y="91" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="650" fill="#65717f">Built around one clear silhouette, two colors, instant read at tiny sizes, and a calm safe-choice cue.</text>
+
+  <g transform="translate(76 135)">
+    <rect class="line-card" width="250" height="360" rx="28"/>
+    <rect class="ink-bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="mint" d="M83 105C83 81.804 101.804 63 125 63C148.196 63 167 81.804 167 105C167 128.196 148.196 147 125 147C101.804 147 83 128.196 83 105Z"/>
+    <path class="ink" d="M102 105C102 92.297 112.297 82 125 82C137.703 82 148 92.297 148 105C148 117.703 137.703 128 125 128C112.297 128 102 117.703 102 105Z"/>
+    <path d="M96 104L116 124L156 84" stroke="#20a464" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">Clear Plate</text>
+    <text class="note" x="125" y="260">most universal</text>
+    <g transform="translate(54 295)">
+      <rect class="ink-bg" width="24" height="24" rx="6"/>
+      <circle class="mint" cx="12" cy="12" r="7"/>
+      <path d="M7.5 12L10.5 15L17 8.5" stroke="#20a464" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="ink-bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <circle class="mint" cx="60" cy="12" r="9.5"/>
+      <path d="M54 12L58 16L67 7.5" stroke="#20a464" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="ink-bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <circle class="mint" cx="116" cy="12" r="12"/>
+      <path d="M108.5 12L113.5 17L124.5 6.5" stroke="#20a464" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="small" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <g transform="translate(350 135)">
+    <rect class="line-card" width="250" height="360" rx="28"/>
+    <rect class="ink-bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="green" d="M125 57L173 77V111C173 144 151 168 125 176C99 168 77 144 77 111V77L125 57Z"/>
+    <path d="M105 95L121 111L149 83" stroke="#fff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="mint" d="M99 129C104 148 113 158 125 158C137 158 146 148 151 129H99Z"/>
+    <text class="label" x="125" y="230">Safe Bowl</text>
+    <text class="note" x="125" y="260">food + confidence</text>
+    <g transform="translate(54 295)">
+      <rect class="ink-bg" width="24" height="24" rx="6"/>
+      <path class="green" d="M12 3L21 7V13C21 19 17 23 12 24C7 23 3 19 3 13V7L12 3Z"/>
+      <path d="M8 11L11 14L16 9" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path class="mint" d="M7 17C8 21 10 22 12 22C14 22 16 21 17 17H7Z"/>
+      <rect class="ink-bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="green" d="M60 0L72 5V14C72 22 67 27 60 30C53 27 48 22 48 14V5L60 0Z"/>
+      <path d="M54 11L58.5 15.5L66.5 7.5" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path class="mint" d="M52 20C54 25 56 27 60 27C64 27 66 25 68 20H52Z"/>
+      <rect class="ink-bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="green" d="M116 -3L132 4V16C132 26 125 34 116 37C107 34 100 26 100 16V4L116 -3Z"/>
+      <path d="M108 12L114 18L124.5 7.5" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path class="mint" d="M106 24C108.5 30 112 33 116 33C120 33 123.5 30 126 24H106Z"/>
+      <text class="small" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <g transform="translate(624 135)">
+    <rect class="line-card" width="250" height="360" rx="28"/>
+    <rect class="ink-bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="green" d="M89 83H75V69H103V97H89V83Z"/>
+    <path class="green" d="M161 83H175V69H147V97H161V83Z"/>
+    <path class="green" d="M89 137H75V151H103V123H89V137Z"/>
+    <path class="green" d="M161 137H175V151H147V123H161V137Z"/>
+    <path class="mint" d="M95 110C95 93.431 108.431 80 125 80C141.569 80 155 93.431 155 110C155 126.569 141.569 140 125 140C108.431 140 95 126.569 95 110Z"/>
+    <path d="M110 109L121 120L142 99" stroke="#1f2933" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">Menu Lock</text>
+    <text class="note" x="125" y="260">scan-first brand</text>
+    <g transform="translate(54 295)">
+      <rect class="ink-bg" width="24" height="24" rx="6"/>
+      <path class="green" d="M6 7H3V4H9V10H6V7ZM18 7H21V4H15V10H18V7ZM6 17H3V20H9V14H6V17ZM18 17H21V20H15V14H18V17Z"/>
+      <circle class="mint" cx="12" cy="12" r="5.4"/>
+      <path d="M9 12L11 14L15 10" stroke="#1f2933" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="ink-bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="green" d="M52 7H48V3H57V12H52V7ZM68 7H72V3H63V12H68V7ZM52 21H48V25H57V16H52V21ZM68 21H72V25H63V16H68V21Z"/>
+      <circle class="mint" cx="60" cy="14" r="7.5"/>
+      <path d="M56 14L59 17L65 11" stroke="#1f2933" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="ink-bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="green" d="M106 6H101V1H112V12H106V6ZM126 6H131V1H120V12H126V6ZM106 26H101V31H112V20H106V26ZM126 26H131V31H120V20H126V26Z"/>
+      <circle class="mint" cx="116" cy="16" r="9.5"/>
+      <path d="M111 16L115 20L122.5 12.5" stroke="#1f2933" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="small" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <g transform="translate(898 135)">
+    <rect class="line-card" width="250" height="360" rx="28"/>
+    <rect class="ink-bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="green" d="M125 169C125 169 168 137 168 97C168 73.252 148.748 54 125 54C101.252 54 82 73.252 82 97C82 137 125 169 125 169Z"/>
+    <circle class="mint" cx="125" cy="97" r="27"/>
+    <path class="ink" d="M116 84V106C116 111 120 115 125 115C130 115 134 111 134 106V84H144V106C144 116 138 124 130 127V140H120V127C112 124 106 116 106 106V84H116Z"/>
+    <text class="label" x="125" y="230">Fork Pin</text>
+    <text class="note" x="125" y="260">restaurant finding</text>
+    <g transform="translate(54 295)">
+      <rect class="ink-bg" width="24" height="24" rx="6"/>
+      <path class="green" d="M12 24S21 17 21 9.5C21 4.3 17.2 1 12 1C6.8 1 3 4.3 3 9.5C3 17 12 24 12 24Z"/>
+      <circle class="mint" cx="12" cy="9.5" r="5"/>
+      <path class="ink" d="M10.5 6V10C10.5 11 11 12 12 12C13 12 13.5 11 13.5 10V6H15V10C15 12 14 14 13 14.5V17H11V14.5C10 14 9 12 9 10V6H10.5Z"/>
+      <rect class="ink-bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="green" d="M60 29S72 20 72 9.5C72 2.8 66.7 -2 60 -2C53.3 -2 48 2.8 48 9.5C48 20 60 29 60 29Z"/>
+      <circle class="mint" cx="60" cy="9.5" r="7"/>
+      <path class="ink" d="M57.5 5V11C57.5 13 58.7 14.3 60 14.3C61.3 14.3 62.5 13 62.5 11V5H65V11C65 14 63.5 16 61.5 17V22H58.5V17C56.5 16 55 14 55 11V5H57.5Z"/>
+      <rect class="ink-bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="green" d="M116 36S131 25 131 11.5C131 3.3 124.2 -3 116 -3C107.8 -3 101 3.3 101 11.5C101 25 116 36 116 36Z"/>
+      <circle class="mint" cx="116" cy="11.5" r="8.5"/>
+      <path class="ink" d="M113 6V13C113 15.2 114.4 17 116 17C117.6 17 119 15.2 119 13V6H122V13C122 17 120 19.5 118 20.5V26H114V20.5C112 19.5 110 17 110 13V6H113Z"/>
+      <text class="small" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <g transform="translate(1172 135)">
+    <rect class="line-card" width="250" height="360" rx="28"/>
+    <rect class="ink-bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="mint" d="M78 106C85 146 103 166 125 166C147 166 165 146 172 106H78Z"/>
+    <path class="green" d="M84 86H166C174 86 181 93 181 101C181 109 174 116 166 116H84C76 116 69 109 69 101C69 93 76 86 84 86Z"/>
+    <path class="white" d="M110 66C114 58 121 54 130 54C137 54 143 57 147 63C154 64 160 70 160 78C160 82 158 86 155 89H97C94 86 92 82 92 78C92 69 99 62 108 62C108.7 62 109.4 62 110 66Z"/>
+    <path d="M98 121L116 139L153 100" stroke="#1f2933" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">Choice Bowl</text>
+    <text class="note" x="125" y="260">friendly food mark</text>
+    <g transform="translate(54 295)">
+      <rect class="ink-bg" width="24" height="24" rx="6"/>
+      <path class="mint" d="M4 12C5.5 20 9 24 12 24C15 24 18.5 20 20 12H4Z"/>
+      <rect class="green" x="4" y="9" width="16" height="6" rx="3"/>
+      <path class="white" d="M9 5C10 3 12 2 14 2C16 2 17 3 18 5C20 6 21 7 21 9H7C7 7 8 6 9 5Z"/>
+      <path d="M8 15L11 18L17 11.5" stroke="#1f2933" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="ink-bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="mint" d="M49 13C51 24 55 29 60 29C65 29 69 24 71 13H49Z"/>
+      <rect class="green" x="49" y="9" width="22" height="8" rx="4"/>
+      <path class="white" d="M56 3C57 1 59 0 62 0C64 0 66 1 67 3C70 4 71 6 71 9H51C51 6 53 4 56 3Z"/>
+      <path d="M54 17L58 21L66 12.5" stroke="#1f2933" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="ink-bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="mint" d="M102 14C104 28 109 35 116 35C123 35 128 28 130 14H102Z"/>
+      <rect class="green" x="101" y="9" width="30" height="10" rx="5"/>
+      <path class="white" d="M111 1C112 -2 115 -3 118 -3C121 -3 124 -1 125 2C129 3 131 6 131 9H101C101 5 105 2 109 2C110 2 110.5 2 111 1Z"/>
+      <path d="M108 19L114 25L124.5 13.5" stroke="#1f2933" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="small" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <g transform="translate(94 575)">
+    <rect class="line-card" width="1312" height="292" rx="30"/>
+    <text x="656" y="50" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="950" fill="#1f2933">What Makes These Stronger</text>
+    <g transform="translate(70 92)">
+      <circle class="green" cx="10" cy="10" r="6"/>
+      <text class="principle" x="32" y="17">One dominant idea per icon: no fork + plate + scan + map + check pileups.</text>
+    </g>
+    <g transform="translate(70 137)">
+      <circle class="green" cx="10" cy="10" r="6"/>
+      <text class="principle" x="32" y="17">Readable silhouette first; interior detail is optional and survives only if it helps recognition.</text>
+    </g>
+    <g transform="translate(70 182)">
+      <circle class="green" cx="10" cy="10" r="6"/>
+      <text class="principle" x="32" y="17">Two-color system: deep ink for trust, green for compatibility, mint for food/plate surfaces.</text>
+    </g>
+    <g transform="translate(70 227)">
+      <circle class="green" cx="10" cy="10" r="6"/>
+      <text class="principle" x="32" y="17">No medical cross, warning triangle, sparkle, robot, or text-reliant mark.</text>
+    </g>
+    <text x="1010" y="116" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="950" fill="#1f2933">My Pick</text>
+    <text x="1010" y="154" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="950" fill="#20a464">Clear Plate</text>
+    <text x="1010" y="190" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="650" fill="#65717f">It communicates the product promise in the fewest shapes:</text>
+    <text x="1010" y="220" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="650" fill="#65717f">food decision, compatibility, confidence.</text>
+  </g>
+</svg>

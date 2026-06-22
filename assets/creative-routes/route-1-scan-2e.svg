@@ -1,0 +1,12 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="96" fill="#FBFAF6"/>
+  <rect x="210" y="120" width="480" height="480" rx="108" fill="#1F2933"/>
+  <path d="M337 282H290V235H383V328H337V282Z" fill="#20A464"/>
+  <path d="M563 282H610V235H517V328H563V282Z" fill="#20A464"/>
+  <path d="M337 438H290V485H383V392H337V438Z" fill="#20A464"/>
+  <path d="M563 438H610V485H517V392H563V438Z" fill="#20A464"/>
+  <path d="M345 298C368 250 426 233 474 249C520 264 539 307 520 348C508 373 480 394 444 416L384 454H526" stroke="#D9F5DF" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M574 282H453V360H546M453 360V446H583" stroke="#D9F5DF" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="450" y="705" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="950" fill="#1F2933">Scan 2E</text>
+  <text x="450" y="756" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="650" fill="#65717F">Menu scan becomes a choice</text>
+</svg>

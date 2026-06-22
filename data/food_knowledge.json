@@ -1,0 +1,31 @@
+{
+  "terms": {
+    "spaghetti": {"aliases": ["linguine", "fettuccine", "pasta", "noodles"], "category": "pasta", "defaultRole": "core", "risks": {"gluten": {"certainty": "high", "reason": "Pasta is usually wheat/gluten-based."}}},
+    "ravioli": {"aliases": ["toasted ravioli"], "category": "stuffed_pasta", "defaultRole": "core", "risks": {"gluten": {"certainty": "high", "reason": "Ravioli is usually wheat/gluten-based."}, "dairy": {"certainty": "medium", "reason": "Ravioli often contains cheese or dairy fillings."}}},
+    "gnocchi": {"aliases": [], "category": "dumpling", "defaultRole": "core", "risks": {"gluten": {"certainty": "medium_high", "reason": "Gnocchi often contains wheat flour unless marked gluten-free."}}},
+    "dumpling": {"aliases": ["dumplings", "potsticker", "wonton"], "category": "dumpling", "defaultRole": "core", "risks": {"gluten": {"certainty": "high", "reason": "Dumpling wrappers are usually wheat/gluten-based."}}},
+    "flour tortilla": {"aliases": ["flour tortillas"], "category": "bread", "defaultRole": "core", "risks": {"gluten": {"certainty": "high", "reason": "Flour tortillas are usually wheat/gluten-based."}}},
+    "bread": {"aliases": ["bun", "buns", "pita", "wrap", "toast", "garlic bread", "croutons"], "category": "bread", "defaultRole": "core", "risks": {"gluten": {"certainty": "high", "reason": "Bread items are usually wheat/gluten-based."}}},
+    "breading": {"aliases": ["breaded", "tempura", "crispy"], "category": "prep", "defaultRole": "prep", "risks": {"gluten": {"certainty": "high", "reason": "Breading and tempura commonly contain wheat/gluten."}}},
+    "milk": {"aliases": ["cream", "butter", "yogurt", "cheese", "parmesan", "feta", "swiss cheese", "queso", "alfredo", "ranch", "cream sauce"], "category": "dairy", "defaultRole": "sauce", "risks": {"dairy": {"certainty": "high", "reason": "This dairy term conflicts with a dairy-free profile."}}},
+    "soy sauce": {"aliases": ["soy", "teriyaki", "tofu", "edamame", "miso"], "category": "soy", "defaultRole": "sauce", "risks": {"soy": {"certainty": "high", "reason": "This term commonly contains soy."}}},
+    "peanut": {"aliases": ["peanuts", "satay"], "category": "peanut", "defaultRole": "core", "risks": {"peanuts": {"certainty": "high", "reason": "Peanut or satay appears in the menu text."}}},
+    "tree nut": {"aliases": ["almond", "cashew", "walnut", "pecan", "pistachio", "hazelnut", "pesto"], "category": "tree_nut", "defaultRole": "unknown", "risks": {"tree_nuts": {"certainty": "medium_high", "reason": "This term can indicate tree nuts."}}},
+    "shellfish": {"aliases": ["shrimp", "crab", "lobster", "clam", "mussel", "oyster", "scampi"], "category": "shellfish", "defaultRole": "core", "risks": {"shellfish": {"certainty": "high", "reason": "Shellfish appears in the menu text."}}},
+    "fish": {"aliases": ["salmon", "tuna", "cod", "tilapia"], "category": "fish", "defaultRole": "core", "risks": {"fish": {"certainty": "high", "reason": "Fish appears in the menu text."}}},
+    "egg": {"aliases": ["eggs", "mayo", "mayonnaise", "aioli", "omelet", "omelette"], "category": "egg", "defaultRole": "sauce", "risks": {"eggs": {"certainty": "high", "reason": "Egg, mayo, or aioli appears in the menu text."}}},
+    "sesame": {"aliases": ["tahini"], "category": "sesame", "defaultRole": "sauce", "risks": {"sesame": {"certainty": "high", "reason": "Sesame or tahini appears in the menu text."}}},
+    "pork": {"aliases": ["bacon", "ham", "prosciutto", "pepperoni", "sausage", "chorizo"], "category": "pork", "defaultRole": "core", "risks": {"pork": {"certainty": "high", "reason": "Pork appears in the menu text."}}},
+    "beef": {"aliases": ["steak", "burger", "hamburger", "meatball", "meatballs"], "category": "beef", "defaultRole": "core", "risks": {"beef": {"certainty": "high", "reason": "Beef appears in the menu text."}}},
+    "chicken": {"aliases": ["turkey"], "category": "poultry", "defaultRole": "core", "risks": {"chicken": {"certainty": "high", "reason": "Chicken or poultry appears in the menu text."}}},
+    "alcohol": {"aliases": ["wine", "beer", "whiskey", "whisky", "vodka", "rum"], "category": "alcohol", "defaultRole": "sauce", "risks": {"alcohol": {"certainty": "high", "reason": "Alcohol appears in the menu text."}}},
+    "coffee": {"aliases": ["espresso", "latte", "cappuccino", "matcha", "tea"], "category": "caffeine", "defaultRole": "core", "risks": {"caffeine": {"certainty": "high", "reason": "Caffeine appears in the menu text."}}},
+    "spicy": {"aliases": ["jalapeno", "jalapeno", "hot sauce"], "category": "spicy", "defaultRole": "topping", "risks": {"spicy": {"certainty": "high", "reason": "Spicy ingredients appear in the menu text."}}},
+    "garlic": {"aliases": ["garlic butter"], "category": "garlic", "defaultRole": "sauce", "risks": {"garlic": {"certainty": "high", "reason": "Garlic appears in the menu text."}}},
+    "onion": {"aliases": ["onions", "shallot", "scallion", "chive"], "category": "onion", "defaultRole": "topping", "risks": {"onions": {"certainty": "high", "reason": "Onion appears in the menu text."}}},
+    "mushroom": {"aliases": ["mushrooms", "portobello", "shiitake"], "category": "mushroom", "defaultRole": "topping", "risks": {"mushrooms": {"certainty": "high", "reason": "Mushrooms appear in the menu text."}}},
+    "corn": {"aliases": ["polenta", "masa"], "category": "corn", "defaultRole": "core", "risks": {"corn": {"certainty": "high", "reason": "Corn appears in the menu text."}}},
+    "coconut": {"aliases": [], "category": "coconut", "defaultRole": "sauce", "risks": {"coconut": {"certainty": "high", "reason": "Coconut appears in the menu text."}}},
+    "fried": {"aliases": ["fries", "french fries", "deep fried"], "category": "prep", "defaultRole": "prep", "risks": {"fried": {"certainty": "high", "reason": "The item appears fried or prepared in a fryer."}}}
+  }
+}

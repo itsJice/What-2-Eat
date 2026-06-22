@@ -1,0 +1,12 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">What 2 Eat logo icon</title>
+  <desc id="desc">A rounded green app icon with a fork, check mark, and plate forming a confident food choice symbol.</desc>
+  <rect width="512" height="512" rx="112" fill="#1F2933"/>
+  <path d="M116 360C116 257.826 198.826 175 301 175C351.112 175 396.573 194.917 429.899 227.274" stroke="#D9F5DF" stroke-width="28" stroke-linecap="round"/>
+  <path d="M118 360H394" stroke="#D9F5DF" stroke-width="28" stroke-linecap="round"/>
+  <path d="M129 167V271" stroke="#20A464" stroke-width="30" stroke-linecap="round"/>
+  <path d="M91 167V254C91 275.539 108.461 293 130 293V293C151.539 293 169 275.539 169 254V167" stroke="#20A464" stroke-width="30" stroke-linecap="round"/>
+  <path d="M130 292V385" stroke="#20A464" stroke-width="30" stroke-linecap="round"/>
+  <path d="M223 281L274.04 332L390 216" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="304" cy="263" r="112" stroke="#20A464" stroke-width="20" stroke-linecap="round" stroke-dasharray="1 38"/>
+</svg>

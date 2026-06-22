@@ -1,0 +1,151 @@
+<svg width="1500" height="980" viewBox="0 0 1500 980" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Eating 2 logo concepts for What 2 Eat</title>
+  <desc id="desc">Five clean logo icon concepts where the number 2 becomes a profile eating food, tied to the What 2 Eat name.</desc>
+  <rect width="1500" height="980" fill="#FBFAF6"/>
+  <style>
+    .card { fill: #fff; stroke: #dce3e8; stroke-width: 2; }
+    .bg { fill: #1f2933; }
+    .two { fill: #d9f5df; }
+    .green { fill: #20a464; }
+    .ink { fill: #1f2933; }
+    .white { fill: #fff; }
+    .label { font: 900 28px Inter, Arial, sans-serif; fill: #1f2933; text-anchor: middle; }
+    .note { font: 650 17px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+    .tiny { font: 800 12px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+  </style>
+
+  <text x="750" y="58" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="950" fill="#1f2933">“Eating 2” Logo Directions</text>
+  <text x="750" y="91" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="650" fill="#65717f">The number 2 becomes a simple profile taking a bite. Kept bold so it still works as an app icon.</text>
+
+  <!-- 1. Bite 2 -->
+  <g transform="translate(76 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="two" d="M84 75C103 54 142 51 164 74C182 93 174 119 151 129L126 140C110 147 102 154 99 164H170V181H73C75 152 88 135 113 124L142 111C157 104 162 91 153 81C140 66 111 66 99 82C94 89 91 97 90 106H70C71 94 75 83 84 75Z"/>
+    <circle class="green" cx="171" cy="112" r="14"/>
+    <path class="ink" d="M151 104C160 104 168 108 172 115C167 121 158 124 149 122L135 119L149 116C157 114 162 112 164 109C161 107 156 106 151 106V104Z"/>
+    <text class="label" x="125" y="230">Bite 2</text>
+    <text class="note" x="125" y="260">cleanest eating read</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path class="two" d="M6 7C9 3 16 3 19 7C22 11 19 15 14 17C11 18 9 19 9 21H20V23H5C5 18 8 15 13 13C17 12 18 9 17 7C15 5 10 5 8 8C7 9 7 11 7 12H4C4 10 5 8 6 7Z"/>
+      <circle class="green" cx="20" cy="13" r="2.3"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="two" d="M51 6C56 1 64 0 69 6C74 11 71 16 64 19C59 21 57 23 56 26H72V29H49C50 22 53 18 59 16C65 13 68 10 65 7C62 4 56 4 54 8C53 10 52 12 52 14H48C48 11 49 8 51 6Z"/>
+      <circle class="green" cx="72" cy="14" r="3"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="two" d="M106 4C112 -2 123 -3 130 4C136 11 132 18 124 22C118 25 115 28 114 31H133V36H103C104 27 108 22 116 19C124 16 127 11 124 7C120 3 112 3 109 8C108 10 107 13 107 16H101C101 11 103 7 106 4Z"/>
+      <circle class="green" cx="133" cy="16" r="3.8"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 2. Spoon 2 -->
+  <g transform="translate(350 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="two" d="M82 75C101 54 139 51 161 73C181 93 173 121 148 132L124 142C110 148 103 155 100 164H168V181H72C74 153 87 136 111 125L140 112C156 105 161 92 152 81C139 67 112 66 99 82C94 88 92 96 91 105H70C71 93 75 83 82 75Z"/>
+    <path d="M154 107L189 91" stroke="#20A464" stroke-width="13" stroke-linecap="round"/>
+    <ellipse cx="196" cy="88" rx="16" ry="11" transform="rotate(-24 196 88)" fill="#20A464"/>
+    <text class="label" x="125" y="230">Spoon 2</text>
+    <text class="note" x="125" y="260">simple food action</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path class="two" d="M6 7C9 3 16 3 19 7C22 11 19 15 14 17C11 18 9 19 9 21H20V23H5C5 18 8 15 13 13C17 12 18 9 17 7C15 5 10 5 8 8C7 9 7 11 7 12H4C4 10 5 8 6 7Z"/>
+      <path d="M17 12L23 9" stroke="#20A464" stroke-width="2.4" stroke-linecap="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="two" d="M51 6C56 1 64 0 69 6C74 11 71 16 64 19C59 21 57 23 56 26H72V29H49C50 22 53 18 59 16C65 13 68 10 65 7C62 4 56 4 54 8C53 10 52 12 52 14H48C48 11 49 8 51 6Z"/>
+      <path d="M67 13L77 9" stroke="#20A464" stroke-width="3.3" stroke-linecap="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="two" d="M106 4C112 -2 123 -3 130 4C136 11 132 18 124 22C118 25 115 28 114 31H133V36H103C104 27 108 22 116 19C124 16 127 11 124 7C120 3 112 3 109 8C108 10 107 13 107 16H101C101 11 103 7 106 4Z"/>
+      <path d="M128 15L142 9" stroke="#20A464" stroke-width="4" stroke-linecap="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 3. Fork 2 -->
+  <g transform="translate(624 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="two" d="M82 75C101 54 139 51 161 73C181 93 173 121 148 132L124 142C110 148 103 155 100 164H168V181H72C74 153 87 136 111 125L140 112C156 105 161 92 152 81C139 67 112 66 99 82C94 88 92 96 91 105H70C71 93 75 83 82 75Z"/>
+    <path d="M157 115H197" stroke="#20A464" stroke-width="10" stroke-linecap="round"/>
+    <path d="M198 96V115M210 96V115M222 96V115" stroke="#20A464" stroke-width="8" stroke-linecap="round"/>
+    <text class="label" x="125" y="230">Fork 2</text>
+    <text class="note" x="125" y="260">literal eating cue</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path class="two" d="M6 7C9 3 16 3 19 7C22 11 19 15 14 17C11 18 9 19 9 21H20V23H5C5 18 8 15 13 13C17 12 18 9 17 7C15 5 10 5 8 8C7 9 7 11 7 12H4C4 10 5 8 6 7Z"/>
+      <path d="M17 14H23M22 9V14M25 9V14" stroke="#20A464" stroke-width="2" stroke-linecap="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="two" d="M51 6C56 1 64 0 69 6C74 11 71 16 64 19C59 21 57 23 56 26H72V29H49C50 22 53 18 59 16C65 13 68 10 65 7C62 4 56 4 54 8C53 10 52 12 52 14H48C48 11 49 8 51 6Z"/>
+      <path d="M68 15H78M77 8V15M81 8V15" stroke="#20A464" stroke-width="2.7" stroke-linecap="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="two" d="M106 4C112 -2 123 -3 130 4C136 11 132 18 124 22C118 25 115 28 114 31H133V36H103C104 27 108 22 116 19C124 16 127 11 124 7C120 3 112 3 109 8C108 10 107 13 107 16H101C101 11 103 7 106 4Z"/>
+      <path d="M129 17H142M141 8V17M146 8V17" stroke="#20A464" stroke-width="3.2" stroke-linecap="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 4. Bowl Bite 2 -->
+  <g transform="translate(898 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="two" d="M82 75C101 54 139 51 161 73C181 93 173 121 148 132L124 142C110 148 103 155 100 164H168V181H72C74 153 87 136 111 125L140 112C156 105 161 92 152 81C139 67 112 66 99 82C94 88 92 96 91 105H70C71 93 75 83 82 75Z"/>
+    <path class="green" d="M158 117C164 141 177 153 195 153C213 153 226 141 232 117H158Z"/>
+    <rect class="green" x="151" y="101" width="88" height="24" rx="12"/>
+    <text class="label" x="125" y="230">Bowl Bite 2</text>
+    <text class="note" x="125" y="260">warm food-first idea</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path class="two" d="M6 7C9 3 16 3 19 7C22 11 19 15 14 17C11 18 9 19 9 21H20V23H5C5 18 8 15 13 13C17 12 18 9 17 7C15 5 10 5 8 8C7 9 7 11 7 12H4C4 10 5 8 6 7Z"/>
+      <path class="green" d="M18 14C19 19 21 21 24 21C27 21 29 19 30 14H18Z"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="two" d="M51 6C56 1 64 0 69 6C74 11 71 16 64 19C59 21 57 23 56 26H72V29H49C50 22 53 18 59 16C65 13 68 10 65 7C62 4 56 4 54 8C53 10 52 12 52 14H48C48 11 49 8 51 6Z"/>
+      <path class="green" d="M69 16C70 22 73 25 77 25C81 25 84 22 85 16H69Z"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="two" d="M106 4C112 -2 123 -3 130 4C136 11 132 18 124 22C118 25 115 28 114 31H133V36H103C104 27 108 22 116 19C124 16 127 11 124 7C120 3 112 3 109 8C108 10 107 13 107 16H101C101 11 103 7 106 4Z"/>
+      <path class="green" d="M130 18C132 26 136 30 141 30C146 30 150 26 152 18H130Z"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 5. Face 2 -->
+  <g transform="translate(1172 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="two" d="M86 69C105 51 144 50 165 73C181 91 177 115 156 128L129 145C115 154 107 161 104 169H174V184H77C79 156 91 139 115 124L143 107C156 99 159 87 150 78C137 65 112 65 99 80C94 86 92 94 92 104H72C72 90 77 77 86 69Z"/>
+    <circle class="ink" cx="119" cy="88" r="6"/>
+    <path d="M154 115C166 115 175 118 181 126C174 134 164 138 153 137" stroke="#1F2933" stroke-width="10" stroke-linecap="round"/>
+    <circle class="green" cx="190" cy="126" r="13"/>
+    <text class="label" x="125" y="230">Face 2</text>
+    <text class="note" x="125" y="260">most character-like</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path class="two" d="M7 6C10 3 17 3 20 7C23 11 20 15 15 17L11 20H21V23H5C6 18 8 15 13 13C17 11 18 9 17 7C15 5 10 5 8 8C7 9 7 11 7 12H4C4 9 5 7 7 6Z"/>
+      <circle class="ink" cx="13" cy="9" r="1.2"/>
+      <circle class="green" cx="23" cy="14" r="2"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="two" d="M52 5C57 0 65 0 70 6C75 11 72 16 65 20L58 25H73V29H49C50 22 53 18 60 15C65 12 67 9 65 7C62 4 56 4 54 8C53 10 52 12 52 14H48C48 10 50 7 52 5Z"/>
+      <circle class="ink" cx="61" cy="9" r="1.7"/>
+      <circle class="green" cx="76" cy="15" r="2.8"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="two" d="M107 3C113 -2 124 -2 130 4C136 11 133 18 125 23L115 31H133V36H103C104 27 108 22 117 18C124 14 126 10 123 7C120 3 113 3 109 8C108 10 107 13 107 16H101C101 11 103 6 107 3Z"/>
+      <circle class="ink" cx="118" cy="9" r="2"/>
+      <circle class="green" cx="136" cy="16" r="3.4"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <g transform="translate(100 580)">
+    <rect class="card" width="1300" height="280" rx="30"/>
+    <text x="650" y="54" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="950" fill="#1f2933">The Right Move</text>
+    <text x="80" y="112" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="850" fill="#1f2933">Why this works</text>
+    <text x="80" y="142" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">It makes the name itself memorable: the 2 is not just a number, it is the eater.</text>
+    <text x="80" y="192" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="850" fill="#1f2933">What to avoid</text>
+    <text x="80" y="222" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">Do not add a full person, hand, burger, or detailed face. The silhouette should stay icon-simple.</text>
+    <text x="820" y="112" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="850" fill="#1f2933">Best direction</text>
+    <text x="820" y="150" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="950" fill="#20a464">Bite 2</text>
+    <text x="820" y="188" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">It is the simplest read: a 2, a mouth-like bite, and food.</text>
+    <text x="820" y="218" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">That is enough for the name and function to click.</text>
+  </g>
+</svg>

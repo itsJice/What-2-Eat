@@ -216,6 +216,27 @@ Version 2:
 - Meal ratings
 - Community recommendations
 
+Version 3:
+
+- Grocery store barcode scanning
+- Packaged food ingredient checks
+- Open Food Facts lookup for product labels, allergens, traces, additives, and nutrition
+- Dine DNA matching for grocery items before the user buys them
+
+## Future Grocery Mode
+
+Add a separate grocery-store flow for packaged foods.
+
+Users should be able to scan a barcode while shopping and get a quick Dine DNA answer:
+
+- safe for me
+- check the label
+- avoid
+
+This flow should use Open Food Facts as the first lookup source because it is strongest for packaged products, barcode lookup, ingredient labels, allergen traces, additives, and nutrition.
+
+This should stay separate from restaurant menu scanning. Restaurant menus need AI vision, menu context, substitution logic, and prep-risk guidance. Grocery barcode scanning needs product lookup, ingredient parsing, and package-label allergen matching.
+
 ## Biggest Competitive Advantage
 
 Most food apps organize food by:

@@ -1,0 +1,10 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="96" fill="#FBFAF6"/>
+  <rect x="210" y="120" width="480" height="480" rx="108" fill="#1F2933"/>
+  <circle cx="450" cy="360" r="148" fill="#D9F5DF"/>
+  <path d="M362 310C385 263 443 245 493 262C544 280 561 327 541 370C527 400 497 421 459 442V477" stroke="#1F2933" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="459" cy="516" r="24" fill="#20A464"/>
+  <path d="M334 392L389 447L514 318" stroke="#20A464" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="450" y="705" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="950" fill="#1F2933">What? 2E</text>
+  <text x="450" y="756" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="650" fill="#65717F">Answers “what should I eat?”</text>
+</svg>

@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#11352a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="What 2 Eat" />
     <title>What 2 Eat</title>
     <script>
       if (window.location.protocol === "file:") {
@@ -12,14 +16,17 @@
         document.documentElement.dataset.bootError = event?.message || "app error";
       });
     </script>
-    <link rel="stylesheet" href="styles.css?v=ai-scan-api" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="assets/logo-icon.png?v=new-logo-1" type="image/png" />
+    <link rel="apple-touch-icon" href="/assets/app-icon-192.png" />
+    <link rel="stylesheet" href="styles.css?v=three-dots-1" />
   </head>
   <body>
     <div class="phone-shell">
       <div class="app-shell">
         <header class="app-header">
           <div class="brand">
-            <div class="brand-mark">W2E</div>
+            <img class="brand-mark" src="assets/logo-icon.png?v=new-logo-1" alt="What 2 Eat" />
             <div>
               <h1>What 2 Eat</h1>
             </div>
@@ -29,7 +36,7 @@
         <main class="main-content">
           <section class="view active" id="dashboard">
             <div class="eat-screen">
-              <div>
+              <div class="eat-intro">
                 <p class="eyebrow">Eat</p>
                 <h2>What sounds good?</h2>
                 <p id="profileSummary">Build your Dine DNA to start matching meals.</p>
@@ -37,27 +44,40 @@
 
               <div class="big-choice-grid">
                 <button class="big-choice" id="openScan" data-view-target="scan" onclick="window.__w2eSetView && window.__w2eSetView('scan')" type="button">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M4 7V5a1 1 0 0 1 1-1h2" />
-                    <path d="M17 4h2a1 1 0 0 1 1 1v2" />
-                    <path d="M20 17v2a1 1 0 0 1-1 1h-2" />
-                    <path d="M7 20H5a1 1 0 0 1-1-1v-2" />
-                    <path d="M8 9h8" />
-                    <path d="M8 13h8" />
-                    <path d="M8 17h5" />
-                  </svg>
+                  <span class="choice-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 7V5a1 1 0 0 1 1-1h2" />
+                      <path d="M17 4h2a1 1 0 0 1 1 1v2" />
+                      <path d="M20 17v2a1 1 0 0 1-1 1h-2" />
+                      <path d="M7 20H5a1 1 0 0 1-1-1v-2" />
+                      <path d="M8 9h8" />
+                      <path d="M8 13h8" />
+                      <path d="M8 17h5" />
+                    </svg>
+                  </span>
                   <span>Scan Menu</span>
-                  <small>Use a menu photo</small>
+                  <small>Take or upload a menu photo and get a clean order plan.</small>
+                  <b>Start scan</b>
                 </button>
 
-                <button class="big-choice" id="openSearch" data-view-target="search" onclick="window.__w2eSetView && window.__w2eSetView('search')" type="button">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 21s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z" />
-                    <circle cx="12" cy="9" r="2.5" />
-                  </svg>
-                  <span>Find Nearby</span>
-                  <small>Search restaurants</small>
+                <button class="big-choice" id="openProductScan" data-view-target="product-scan" onclick="window.__w2eSetView && window.__w2eSetView('product-scan')" type="button">
+                  <span class="choice-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 7V5a1 1 0 0 1 1-1h2" />
+                      <path d="M17 4h2a1 1 0 0 1 1 1v2" />
+                      <path d="M20 17v2a1 1 0 0 1-1 1h-2" />
+                      <path d="M7 20H5a1 1 0 0 1-1-1v-2" />
+                      <path d="M7 9v6" />
+                      <path d="M10 9v6" />
+                      <path d="M14 9v6" />
+                      <path d="M17 9v6" />
+                    </svg>
+                  </span>
+                  <span>Scan Food</span>
+                  <small>Scan a grocery barcode and check ingredients against your Dine DNA.</small>
+                  <b>Look up product</b>
                 </button>
+
               </div>
             </div>
           </section>
@@ -99,7 +119,7 @@
 
               <div class="scanner-bottom">
                 <label class="scan-count-card" aria-label="Add from photos">
-                  <input id="menuImage" type="file" accept="image/*,.pdf" multiple />
+                  <input id="menuImage" type="file" accept="image/*,.pdf" capture="environment" multiple />
                   <strong id="photoCount">0</strong>
                   <div class="photo-thumbs" id="photoThumbs"></div>
                 </label>
@@ -122,12 +142,17 @@
               </svg>
             </button>
             <div class="loading-screen">
-              <p class="eyebrow">Reading menu text</p>
-              <h2>Cooking up your custom menu</h2>
-              <p>We’re reading the photo and matching dishes to your Dine DNA.</p>
-              <div class="progress-track">
-                <div class="progress-bar"></div>
+              <div class="loading-visual" aria-hidden="true">
+                <div class="loading-page-stack" id="loadingPageStack">
+                  <span class="loading-page page-one"></span>
+                  <span class="loading-page page-two"></span>
+                  <span class="loading-page page-three"></span>
+                  <span class="scan-beam"></span>
+                </div>
               </div>
+              <p class="eyebrow" id="loadingStageLabel">Reading menu text</p>
+              <h2 id="loadingTitle">Reading your menu</h2>
+              <p id="loadingStatusLine">Flipping through the first page.</p>
             </div>
           </section>
 
@@ -142,6 +167,7 @@
               <h2 id="scanMenuTitle">Menu scan</h2>
               <p id="scanVerdictPrimary">We looked at the menu and found a few solid options.</p>
               <p id="scanVerdictSecondary">Some items may need edits, and we broke down the full menu below.</p>
+              <p class="scan-safety-disclaimer" id="scanSafetyDisclaimer" hidden>For allergies or strong restrictions, ask staff about shared prep surfaces and cross-contact.</p>
             </div>
             <div class="scan-order-builder">
               <div class="scan-order-list" id="scanOrderList"></div>
@@ -149,29 +175,51 @@
             <div class="menu-section-list" id="menuSectionList"></div>
           </section>
 
-          <section class="view" id="search">
-            <div class="page-kicker">
-              <button class="back-button" data-back type="button" aria-label="Back" title="Back">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
-              </button>
-              <p class="eyebrow">Search Restaurants</p>
-            </div>
+          <section class="view" id="product-scan">
+            <button class="back-button" data-back type="button" aria-label="Back" title="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
             <div class="section-header section-header-compact">
-              <h2>Find a place</h2>
+              <p class="eyebrow">Open Food Facts</p>
+              <h2>Scan a product</h2>
+              <p>Use a real barcode scan or type the number from the package.</p>
             </div>
 
-            <div class="search-row">
-              <input id="restaurantSearch" placeholder="Restaurant or cuisine" />
-              <select id="compatibilityFilter">
-                <option value="all">All</option>
-                <option value="high">High confidence</option>
-                <option value="medium">Needs confirmation</option>
-              </select>
+            <div class="product-lookup-panel">
+              <div class="product-camera" id="productCameraWrap">
+                <video id="productCameraPreview" playsinline autoplay muted></video>
+                <div class="product-camera-empty" id="productCameraEmpty">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7V5a1 1 0 0 1 1-1h2" />
+                    <path d="M17 4h2a1 1 0 0 1 1 1v2" />
+                    <path d="M20 17v2a1 1 0 0 1-1 1h-2" />
+                    <path d="M7 20H5a1 1 0 0 1-1-1v-2" />
+                    <path d="M7 9v6" />
+                    <path d="M10 9v6" />
+                    <path d="M14 9v6" />
+                    <path d="M17 9v6" />
+                  </svg>
+                  <span>Barcode scanner</span>
+                </div>
+              </div>
+
+              <form class="product-search-form" id="productLookupForm">
+                <label>
+                  Barcode
+                  <input id="productBarcode" inputmode="numeric" autocomplete="off" placeholder="e.g. 737628064502" />
+                </label>
+                <div class="product-actions">
+                  <button class="primary-action" id="lookupProduct" type="submit">Look up</button>
+                  <button class="secondary-action" id="startProductScanner" type="button">Scan barcode</button>
+                </div>
+              </form>
             </div>
 
-            <div class="restaurant-list" id="restaurantList"></div>
+            <div class="product-result" id="productResult">
+              <div class="empty-state">Scan a package barcode to check ingredients and nutrition facts.</div>
+            </div>
           </section>
 
           <section class="view" id="saved">
@@ -266,6 +314,6 @@
       </div>
     </div>
 
-    <script src="app.js?v=ai-scan-api"></script>
+    <script src="app.js?v=three-dots-1"></script>
   </body>
 </html>

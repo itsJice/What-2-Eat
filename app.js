@@ -259,6 +259,17 @@ const ocrScriptUrl = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract
 let ocrScriptPromise = null;
 const scanParserVersion = "texas-chili-scan-3";
 const aiScanApiUrl = window.location.port === "5191" ? "http://127.0.0.1:8000/api/scan-menu" : "/api/scan-menu";
+const openFoodFactsApiUrl = window.location.port === "5191"
+  ? "http://127.0.0.1:8000/api/open-food-facts/product"
+  : "/api/open-food-facts/product";
+
+if ("serviceWorker" in navigator && window.location.protocol === "https:") {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {
+      // Installability still works without offline caching.
+    });
+  });
+}
 
 const restaurants = [
   {
@@ -314,9 +325,15 @@ const state = {
   recommendedOrder: null,
   scanMeta: null,
   scanSource: null,
+  isScanInProgress: false,
+  eatReturnView: "dashboard",
   cameraStream: null,
   flashOn: false,
   scanRequestId: 0,
+  productLookup: null,
+  productScanActive: false,
+  productCameraStream: null,
+  productDetectorFrame: null,
 };
 
 const storage = {
@@ -345,11 +362,21 @@ const nextFromCamera = document.querySelector("#nextFromCamera");
 const scannerStatus = document.querySelector("#scannerStatus");
 const scanVerdictPrimary = document.querySelector("#scanVerdictPrimary");
 const scanVerdictSecondary = document.querySelector("#scanVerdictSecondary");
+const scanSafetyDisclaimer = document.querySelector("#scanSafetyDisclaimer");
 const scanMenuTitle = document.querySelector("#scanMenuTitle");
 const scanOrderList = document.querySelector("#scanOrderList");
 const menuSectionList = document.querySelector("#menuSectionList");
+const loadingStageLabel = document.querySelector("#loadingStageLabel");
+const loadingTitle = document.querySelector("#loadingTitle");
+const loadingStatusLine = document.querySelector("#loadingStatusLine");
+const productLookupForm = document.querySelector("#productLookupForm");
+const productBarcode = document.querySelector("#productBarcode");
+const productResult = document.querySelector("#productResult");
+const productCameraWrap = document.querySelector("#productCameraWrap");
+const productCameraPreview = document.querySelector("#productCameraPreview");
 
 const viewHistory = ["dashboard"];
+const eatViews = ["dashboard", "scan", "scan-loading", "scan-results", "product-scan"];
 
 function readStoredJson(key, fallback) {
   try {
@@ -367,6 +394,88 @@ function readStoredJson(key, fallback) {
 
 function delay(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function setScanProgress(progress) {
+  return Math.max(0, Math.min(1, Number(progress) || 0));
+}
+
+const scanLoadingStages = {
+  preparing: {
+    label: "Getting pages ready",
+    title: "Lining up the menu",
+    lines: [
+      "Getting the pages in order before we read the fine print.",
+      "Straightening the menu stack.",
+      "Warming up the scanner eyes.",
+    ],
+  },
+  scanning: {
+    label: "Reading menu text",
+    title: "Scanning the menu",
+    lines: [
+      "Flipping through the pages and pulling out dish names.",
+      "Reading the tiny menu print so you do not have to squint.",
+      "Checking sauces, sides, and all the sneaky little details.",
+    ],
+  },
+  matching: {
+    label: "Matching Dine DNA",
+    title: "Checking what fits",
+    lines: [
+      "Comparing each dish with your Taste profile.",
+      "Sorting easy wins from ask-before-ordering items.",
+      "Looking for the low-effort order hiding in the menu.",
+    ],
+  },
+  building: {
+    label: "Building results",
+    title: "Organizing your menu",
+    lines: [
+      "Grouping everything into clean dropdowns.",
+      "Putting the best low-effort order up top.",
+      "Making the waiter script less awkward.",
+    ],
+  },
+  done: {
+    label: "Ready",
+    title: "Menu is ready",
+    lines: ["Plating the results now."],
+  },
+};
+
+function loadingLineFor(stage, progress) {
+  const lines = scanLoadingStages[stage]?.lines || scanLoadingStages.preparing.lines;
+  const index = Math.min(lines.length - 1, Math.floor(Math.max(0, Math.min(0.99, progress || 0)) * lines.length));
+  return lines[index];
+}
+
+function setScanLoadingState(stage, options = {}) {
+  const stageData = scanLoadingStages[stage] || scanLoadingStages.preparing;
+  const progress = options.progress;
+  if (typeof progress === "number") setScanProgress(progress);
+
+  if (loadingStageLabel) loadingStageLabel.textContent = stageData.label;
+  if (loadingTitle) loadingTitle.textContent = stageData.title;
+  if (loadingStatusLine) loadingStatusLine.textContent = options.detail || loadingLineFor(stage, progress);
+}
+
+function hasActiveMenuResult() {
+  return Boolean(state.scanMeta || state.scanMeals.length || state.scanSections.length || state.recommendedOrder);
+}
+
+function resolveViewTarget(viewId) {
+  if (viewId !== "dashboard") return viewId;
+  if (state.isScanInProgress) return "scan-loading";
+  if (state.eatReturnView && state.eatReturnView !== "dashboard") return state.eatReturnView;
+  if (hasActiveMenuResult()) return "scan-results";
+  return "dashboard";
+}
+
+function rememberEatView(viewId) {
+  if (eatViews.includes(viewId)) {
+    state.eatReturnView = viewId;
+  }
 }
 
 function loadOcrLibrary() {
@@ -393,6 +502,9 @@ function loadOcrLibrary() {
 }
 
 async function extractMenuText(source, onProgress) {
+  if (source instanceof File && source.type === "application/pdf") {
+    return "";
+  }
   const Tesseract = await loadOcrLibrary();
   const result = await Tesseract.recognize(source, "eng", {
     logger: (message) => {
@@ -435,7 +547,30 @@ const menuSectionHeaders = new Set([
 
 const menuKeywordGroups = {
   dairy: ["milk", "cheese", "cream", "butter", "yogurt", "alfredo", "parm", "parmesan", "ranch"],
-  gluten: ["wheat", "bread", "bun", "pita", "pasta", "noodle", "wrap", "pizza", "crouton", "flour", "tempura"],
+  gluten: [
+    "wheat",
+    "bread",
+    "bun",
+    "pita",
+    "pasta",
+    "noodle",
+    "noodles",
+    "spaghetti",
+    "linguine",
+    "fettuccine",
+    "ravioli",
+    "tortellini",
+    "gnocchi",
+    "dumpling",
+    "dumplings",
+    "wrap",
+    "pizza",
+    "crouton",
+    "flour",
+    "tempura",
+    "breaded",
+    "breading",
+  ],
   peanuts: ["peanut", "satay"],
   nuts: ["almond", "cashew", "walnut", "pecan", "pistachio", "hazelnut"],
   shellfish: ["shrimp", "lobster", "crab", "prawn", "clam", "mussel", "oyster"],
@@ -859,22 +994,18 @@ function buildScanMealFromLine(line, menuTitle) {
   const remove = [...new Set([...avoidHits, ...dontLoveHits.slice(0, 1)])].slice(0, 3);
   const confirm = [];
   if (category !== "safe") {
-    confirm.push("Ask about sauces, oils, and prep surface.");
-  }
-  if (state.profile.avoidFoods.includes("Gluten / Wheat") || lower.includes("wrap") || lower.includes("pasta") || lower.includes("bread") || lower.includes("bun")) {
-    confirm.push("Check for cross-contamination with gluten.");
-  }
-  if (state.profile.avoidFoods.includes("Dairy") || lower.includes("cream") || lower.includes("cheese") || lower.includes("butter")) {
-    confirm.push("Confirm dairy-free sauces and toppings.");
+    confirm.push("Double-check sauces, oils, and the prep surface.");
   }
   if (state.profile.healthNeeds.includes("Avoid Shared Fryers")) {
-    confirm.push("Ask whether the fryer is shared.");
+    confirm.push("Ask if the fryer is shared.");
   }
 
   const substitutions = [];
-  if (lower.includes("fried")) substitutions.push("Ask for grilled or baked instead of fried.");
-  if (lower.includes("wrap") || lower.includes("pita") || lower.includes("bun")) substitutions.push("Make it a bowl or salad if possible.");
-  if (lower.includes("pasta")) substitutions.push("Swap for rice or vegetables if the restaurant allows it.");
+  if (lower.includes("fried")) substitutions.push("Swap fried prep for grilled or baked, if they can.");
+  if (lower.includes("wrap") || lower.includes("pita") || lower.includes("bun")) substitutions.push("Swap the bread or wrap for a bowl or salad, if available.");
+  if (textHasKeyword(lower, ["pasta", "noodle", "noodles", "spaghetti", "linguine", "fettuccine", "ravioli", "tortellini", "gnocchi", "dumpling", "dumplings"])) {
+    substitutions.push("Swap pasta or dumplings for rice or vegetables, if available.");
+  }
 
   const tags = [
     ...new Set([
@@ -907,8 +1038,8 @@ function buildScanMealFromLine(line, menuTitle) {
     confirm,
     substitutions,
     notes: [
-      category === "avoid" ? "Choose another item or ask for a safer swap." : "Please confirm ingredients with restaurant staff.",
-      "Cross-contamination may still be possible.",
+      category === "avoid" ? "Pick another item unless the kitchen can make a truly safe version." : "Ask one quick question before ordering.",
+      "Prep surfaces can still matter.",
     ],
     score: confidence === "High" ? 80 : 60,
     tags,
@@ -916,7 +1047,11 @@ function buildScanMealFromLine(line, menuTitle) {
 }
 
 function buildScanMealFromAiItem(item, menuTitle) {
-  const parts = [item.name, item.description, item.price].filter(Boolean).join(" ");
+  const spoonacularTerms = (item.spoonacularAnnotations || [])
+    .map((annotation) => annotation.name)
+    .filter(Boolean)
+    .join(" ");
+  const parts = [item.name, item.description, item.price, spoonacularTerms].filter(Boolean).join(" ");
   const meal = buildScanMealFromLine(parts || item.name, menuTitle);
   return {
     ...meal,
@@ -924,14 +1059,64 @@ function buildScanMealFromAiItem(item, menuTitle) {
     restaurant: menuTitle,
     sourceTrace: "ai-vision",
     ingredients: item.description ? [item.description] : [item.name],
+    spoonacularAnnotations: item.spoonacularAnnotations || [],
     price: item.price || "",
     score: meal.score || 75,
   };
 }
 
+function annotationsForMenuItem(item, annotations) {
+  const itemText = comparisonText([item.name, item.description].filter(Boolean).join(" "));
+  return (annotations || []).filter((annotation) => {
+    const annotationText = comparisonText(annotation.name);
+    if (!annotationText) return false;
+    return itemText.includes(annotationText) || annotationText.includes(itemText);
+  });
+}
+
 function buildAiScanData(aiPayload, sourceLabel, sourceId) {
+  if (aiPayload.evaluatedMenu?.sections?.length) {
+    const evaluated = aiPayload.evaluatedMenu;
+    const sections = evaluated.sections.map((section) => ({
+      title: section.title || section.name || "Menu",
+      items: (section.items || []).map((item) => ({
+        ...item,
+        restaurant: evaluated.title || aiPayload.menu?.restaurantName || "Uploaded menu",
+        sourceTrace: item.sourceTrace || "server-engine",
+        ingredients: item.ingredients?.length ? item.ingredients : [item.description || item.name],
+        remove: item.remove || [],
+        confirm: item.confirm || [],
+        substitutions: item.substitutions || [],
+        notes: item.notes || [],
+      })),
+    }));
+    const items = sections.flatMap((section) => section.items);
+    return {
+      sourceId,
+      sourceName: aiPayload.sourceName || sourceLabel,
+      parserVersion: aiPayload.parserVersion || scanParserVersion,
+      engineVersion: aiPayload.engineVersion || evaluated.engineVersion,
+      parserUsed: aiPayload.parserUsed || "openai-vision-ocr",
+      confidence: items.some((item) => item.confidence === "Low") ? "Medium" : "High",
+      failure: null,
+      sourceTruth: aiPayload.ocrCoverage?.checked ? "AI vision + backend Dine DNA engine + OCR coverage" : "AI vision + backend Dine DNA engine",
+      foodEnrichment: aiPayload.foodEnrichment || null,
+      ocrCoverage: aiPayload.ocrCoverage || null,
+      title: evaluated.title || aiPayload.menu?.restaurantName || "Uploaded menu",
+      rawText: "",
+      sections,
+      items,
+      counts: evaluated.counts || null,
+      hasText: true,
+      rejectedLineCount: 0,
+      recommendedOrder: evaluated.recommendedOrder || null,
+    };
+  }
+
   const menu = aiPayload.menu || aiPayload;
   const title = menu.restaurantName || "Uploaded menu";
+  const foodEnrichment = aiPayload.foodEnrichment || null;
+  const spoonacularAnnotations = foodEnrichment?.annotations || [];
   const sections = (menu.sections || [])
     .map((section) => ({
       title: section.name,
@@ -942,6 +1127,7 @@ function buildAiScanData(aiPayload, sourceLabel, sourceId) {
             name: String(item.name).trim(),
             description: String(item.description || "").trim(),
             price: String(item.price || "").trim(),
+            spoonacularAnnotations: annotationsForMenuItem(item, spoonacularAnnotations),
           },
           title,
         )),
@@ -963,7 +1149,8 @@ function buildAiScanData(aiPayload, sourceLabel, sourceId) {
     parserUsed: aiPayload.parserUsed || "ai-vision",
     confidence: "High",
     failure: null,
-    sourceTruth: "AI vision + OCR text",
+    sourceTruth: foodEnrichment?.ok ? "AI vision + Spoonacular whole-menu food detection" : "AI vision",
+    foodEnrichment,
     title,
     rawText: "",
     sections,
@@ -972,6 +1159,188 @@ function buildAiScanData(aiPayload, sourceLabel, sourceId) {
     rejectedLineCount: 0,
     recommendedOrder: buildRecommendedOrder(sections),
   };
+}
+
+function comparisonText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\$\s?\d+(?:\.\d{2})?/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function comparisonWords(value) {
+  const ignored = new Set(["and", "the", "with", "for", "your", "our", "served", "style", "side", "choice"]);
+  return comparisonText(value)
+    .split(" ")
+    .filter((word) => word.length > 2 && !ignored.has(word));
+}
+
+function extractComparablePrice(value) {
+  const match = String(value || "").match(/\$\s?\d+(?:\.\d{2})?/);
+  return match ? match[0].replace(/\s+/g, "") : "";
+}
+
+function ocrCoverageLines(rawText) {
+  const rawLines = dedupeLines(
+    String(rawText || "")
+      .split(/\r?\n/)
+      .map(normalizeMenuLine)
+      .filter((line) => line && /[a-zA-Z]/.test(line) && line.length > 3),
+  );
+  const { accepted } = validateOcrLines(rawLines, { relaxed: true });
+  return accepted.filter((line) => isLikelyMenuItemLine(line, { relaxed: true }));
+}
+
+function scoreOcrLineAgainstMeal(line, meal) {
+  const lineText = comparisonText(line);
+  const mealName = comparisonText(meal.name);
+  if (!lineText || !mealName) return 0;
+  if (lineText.includes(mealName) || mealName.includes(lineText)) return 1;
+
+  const lineWords = new Set(comparisonWords(line));
+  const mealWords = comparisonWords(meal.name);
+  if (!mealWords.length || !lineWords.size) return 0;
+  const matched = mealWords.filter((word) => lineWords.has(word)).length;
+  return matched / mealWords.length;
+}
+
+function bestOcrMatchForMeal(meal, ocrLines) {
+  return ocrLines.reduce(
+    (best, line) => {
+      const score = scoreOcrLineAgainstMeal(line, meal);
+      return score > best.score ? { line, score } : best;
+    },
+    { line: "", score: 0 },
+  );
+}
+
+function lowerConfidence(confidence) {
+  if (confidence === "High") return "Medium";
+  return "Low";
+}
+
+function uniqueList(items) {
+  return [...new Set((items || []).filter(Boolean))];
+}
+
+function reconcileAiWithOcr(scanData, rawText, sourceLabel, sourceId) {
+  if (!scanData || scanData.failure || !scanData.sections?.length || !rawText.trim()) return scanData;
+
+  const ocrLines = ocrCoverageLines(rawText);
+  if (ocrLines.length < 3) {
+    return {
+      ...scanData,
+      sourceTruth: "AI vision; OCR coverage was too thin to compare",
+      ocrCoverage: { checked: false, ocrLineCount: ocrLines.length, unsupportedAiCount: 0, ocrOnlyCount: 0 },
+    };
+  }
+
+  const supportedOcrLines = new Set();
+  let unsupportedAiCount = 0;
+  let priceConflictCount = 0;
+
+  const sections = scanData.sections.map((section) => ({
+    ...section,
+    items: section.items.map((meal) => {
+      const match = bestOcrMatchForMeal(meal, ocrLines);
+      const supported = match.score >= 0.62;
+      const nextMeal = {
+        ...meal,
+        confirm: [...(meal.confirm || [])],
+        notes: [...(meal.notes || [])],
+      };
+
+      if (supported) {
+        supportedOcrLines.add(match.line);
+        const aiPrice = extractComparablePrice(meal.price);
+        const ocrPrice = extractComparablePrice(match.line);
+        if (aiPrice && ocrPrice && aiPrice !== ocrPrice) {
+          priceConflictCount += 1;
+          nextMeal.confidence = lowerConfidence(nextMeal.confidence);
+          nextMeal.score = Math.max(0, (nextMeal.score || 70) - 8);
+          nextMeal.confirm = uniqueList([...nextMeal.confirm, `Confirm price; AI read ${aiPrice}, OCR read ${ocrPrice}.`]);
+          nextMeal.notes = uniqueList([...nextMeal.notes, "AI layout is kept, but OCR saw a different price nearby."]);
+        }
+        return nextMeal;
+      }
+
+      unsupportedAiCount += 1;
+      nextMeal.confidence = lowerConfidence(nextMeal.confidence);
+      nextMeal.score = Math.max(0, (nextMeal.score || 70) - 10);
+      nextMeal.confirm = uniqueList([...nextMeal.confirm, "Confirm item name and details; OCR did not clearly catch this line."]);
+      nextMeal.notes = uniqueList([...nextMeal.notes, "AI saw this in the image, but OCR coverage did not support it clearly."]);
+      return nextMeal;
+    }),
+  }));
+
+  const allAiItems = sections.flatMap((section) => section.items);
+  const ocrOnlyItems = ocrLines
+    .filter((line) => !supportedOcrLines.has(line))
+    .filter((line) => !allAiItems.some((meal) => scoreOcrLineAgainstMeal(line, meal) >= 0.62))
+    .slice(0, 8)
+    .map((line) => {
+      const meal = buildScanMealFromLine(line, scanData.title || sourceLabel);
+      const linePrice = extractComparablePrice(line);
+      return {
+        ...meal,
+        name: line.replace(/\s+\$\s?\d+(?:\.\d{2})?$/, "").trim(),
+        sourceTrace: "ocr-coverage",
+        confidence: "Low",
+        price: linePrice,
+        score: Math.max(0, (meal.score || 60) - 18),
+        summary: "OCR caught this line, but AI did not place it confidently in the menu.",
+        confirm: uniqueList([...meal.confirm, "Ask staff whether this item is actually available and confirm the printed name."]),
+        notes: uniqueList([...meal.notes, "Needs a second look because OCR saw it outside the AI-structured result."]),
+      };
+    });
+
+  const reconciledSections = ocrOnlyItems.length
+    ? [...sections, { title: "Needs a second look", items: ocrOnlyItems }]
+    : sections;
+  const items = reconciledSections.flatMap((section) => section.items);
+
+  return {
+    ...scanData,
+    sourceTruth: "AI vision + OCR coverage check",
+    sections: reconciledSections,
+    items,
+    recommendedOrder: buildRecommendedOrder(reconciledSections),
+    ocrCoverage: {
+      checked: true,
+      ocrLineCount: ocrLines.length,
+      unsupportedAiCount,
+      ocrOnlyCount: ocrOnlyItems.length,
+      priceConflictCount,
+    },
+  };
+}
+
+function readableApiError(errorText) {
+  try {
+    const parsed = JSON.parse(errorText);
+    if (typeof parsed?.detail === "string") return parsed.detail;
+    if (typeof parsed?.error?.message === "string") return parsed.error.message;
+  } catch {
+    // Fall back to the raw response text.
+  }
+  return errorText;
+}
+
+function friendlyAiScanFailure(error) {
+  const message = String(error?.message || error || "");
+  const lower = message.toLowerCase();
+  if (lower.includes("429") || lower.includes("too many requests") || lower.includes("quota") || lower.includes("rate limit")) {
+    return "The AI scanner was reached, but OpenAI blocked the request because of a rate limit, quota, billing, or usage-limit setting. Check billing and usage limits, then try again in a minute.";
+  }
+  if (lower.includes("401") || lower.includes("api key") || lower.includes("unauthorized")) {
+    return "The AI scanner could not use the API key. Check that the OpenAI key is correct and saved in the .env file.";
+  }
+  if (lower.includes("503") || lower.includes("not set")) {
+    return "The AI scanner is not fully connected yet. Check the .env file and restart the server.";
+  }
+  return `The AI scanner failed before it could build the menu. ${message.slice(0, 220)}`;
 }
 
 function dataUrlToFile(dataUrl, filename) {
@@ -1007,7 +1376,7 @@ async function requestAiMenuScan(sources, sourceLabel, sourceId, rawText) {
   const response = await fetch(aiScanApiUrl, { method: "POST", body: formData });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || `AI scan failed with ${response.status}`);
+    throw new Error(readableApiError(errorText || `AI scan failed with ${response.status}`));
   }
   return buildAiScanData(await response.json(), sourceLabel, sourceId);
 }
@@ -1016,11 +1385,16 @@ function displayTerm(term) {
   const names = {
     gluten: "gluten/wheat",
     dairy: "dairy",
+    soy: "soy",
     pork: "pork",
     beef: "beef",
     chicken: "chicken",
     fried: "fried food",
     egg: "eggs",
+    eggs: "eggs",
+    shellfish: "shellfish",
+    fish: "fish",
+    sesame: "sesame",
     onions: "onions",
     mushrooms: "mushrooms",
     corn: "corn",
@@ -1095,14 +1469,14 @@ function classifyTexasChiliItem(item) {
     score -= 18;
     if (item.removable?.includes("fries")) remove.push("fries");
     if (item.removable?.includes("toast")) remove.push("toast");
-    confirm.push("Ask staff whether this can be ordered without bread, fries, toast, or sugary sides.");
+    confirm.push("Ask if they can make it without bread, fries, toast, or sugary sides.");
   }
 
   if (state.profile.healthNeeds.includes("Soft Foods Only")) {
     if (item.tags?.includes("soft")) score += 12;
     if ((item.tags?.includes("fried") || item.tags?.includes("gluten")) && status === "Safe to Order As-Is") {
       status = "Safe With Modifications";
-      confirm.push("Confirm the texture is soft enough before ordering.");
+      confirm.push("Double-check that the texture works for you.");
       score -= 10;
     }
   }
@@ -1121,16 +1495,11 @@ function classifyTexasChiliItem(item) {
     if (textHasKeyword(`${item.name} ${item.description}`.toLowerCase(), keywords)) score += 8;
   });
 
-  if (status !== "Likely Unsafe") {
-    if (item.tags?.includes("gluten") && state.profile.avoidFoods.includes("Gluten / Wheat")) confirm.push("Ask about gluten cross-contact.");
-    if (item.tags?.includes("dairy") && state.profile.avoidFoods.includes("Dairy")) confirm.push("Confirm no dairy remains after edits.");
-  }
-
   const uniqueRemove = [...new Set(remove)].filter(Boolean);
   const uniqueConfirm = [...new Set(confirm)].filter(Boolean);
   const uniqueNotes = [...new Set(notes)].filter(Boolean);
 
-  if (uniqueRemove.length) substitutions.push(`Order ${item.name} with no ${uniqueRemove.join(", no ")}.`);
+  if (uniqueRemove.length) substitutions.push(`Remove ${uniqueRemove.join(", ")}.`);
   if (!uniqueNotes.length && status === "Safe to Order As-Is") uniqueNotes.push("No direct conflict found from the saved Taste profile.");
   if (!uniqueNotes.length && status === "Safe With Modifications") uniqueNotes.push("This can work if the listed edits are possible at the counter.");
 
@@ -1166,16 +1535,37 @@ function sortPersonalizedItems(items) {
 
 function buildRecommendedOrder(sections) {
   const allItems = sections.flatMap((section) => section.items.map((item) => ({ ...item, sectionTitle: section.title })));
-  const candidates = allItems.filter((item) => item.status !== "Likely Unsafe" && item.sectionTitle !== "Extras");
-  const main = candidates.find((item) => !["Sides"].includes(item.sectionTitle));
-  const side = candidates.find((item) => item.sectionTitle === "Sides");
-  if (!main) return null;
+  const candidates = allItems
+    .filter((item) => item.status === "Safe to Order As-Is" && !["Extras"].includes(item.sectionTitle))
+    .filter((item) => avoidConflictReasons(item).length === 0 || item.notes?.some((note) => note.includes("No direct conflict")));
+  const sortedCandidates = candidates.sort((a, b) => (b.score || 0) - (a.score || 0) || a.name.localeCompare(b.name));
+  const main = sortedCandidates.find((item) => !["Sides"].includes(item.sectionTitle));
+  const side = sortedCandidates.find((item) => item.sectionTitle === "Sides");
+  if (!main) {
+    const avoidList = state.profile.avoidFoods.slice(0, 3).join(", ");
+    return {
+      name: "No low-effort order found",
+      summary: avoidList
+        ? `No low-effort order found for your Dine DNA (${avoidList}) on this menu.`
+        : "No low-effort order found for your Dine DNA on this menu.",
+      items: [],
+      instructions: [
+        "Use the dropdowns to review items with edits, but treat them as ask-before-ordering.",
+        "Ask staff for a custom option built without the conflicting ingredients.",
+      ],
+      unavailable: true,
+    };
+  }
   const orderParts = [main, side].filter(Boolean);
   return {
     name: main.name,
     summary: orderParts.map((item) => `${item.sectionTitle}: ${item.name}`).join(" + "),
     items: orderParts,
-    instructions: [...main.substitutions, ...main.remove.map((part) => `No ${part}.`), ...main.confirm].filter(Boolean),
+    instructions: uniqueList([
+      ...main.substitutions.map(cleanGuidanceText),
+      ...main.remove.map((part) => `Remove ${part}.`),
+      ...main.confirm.map(cleanGuidanceText),
+    ]),
   };
 }
 
@@ -1311,23 +1701,6 @@ function publishScanDebug(scanData, source, sourceLabel, rawText = "") {
   };
 }
 
-function renderScanDebugDetails() {
-  const debug = window.__w2eLastScanDebug;
-  if (!debug) return "";
-  const files = debug.uploadedFilenames?.filter(Boolean).join(", ") || "No file name captured";
-  return `
-    <details class="scan-debug-details" open>
-      <summary>Scan details</summary>
-      <div><strong>Uploaded:</strong> ${files}</div>
-      <div><strong>Parser:</strong> ${debug.parserUsed || "unknown"}</div>
-      <div><strong>OCR text read:</strong> ${debug.ocrTextLength || 0} characters</div>
-      <div><strong>Rejected OCR lines:</strong> ${debug.rejectedLineCount || 0}</div>
-      <div><strong>Menu items shown:</strong> ${debug.renderedItemCount || 0}</div>
-      ${debug.failureReason ? `<div><strong>Failure:</strong> ${debug.failureReason}</div>` : ""}
-    </details>
-  `;
-}
-
 function renderScanFailureHelp() {
   return `
     <section class="scan-failure-help">
@@ -1446,6 +1819,8 @@ function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "vali
 
 async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
   const requestId = ++state.scanRequestId;
+  state.isScanInProgress = true;
+  state.eatReturnView = "scan-loading";
   state.scanMeals = [];
   state.scanSections = [];
   state.scanOrder = [];
@@ -1454,40 +1829,116 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
   state.recommendedOrder = null;
   state.scanMeta = null;
   state.scanSource = source;
+  const sources = Array.isArray(source) ? source : [source];
   scannerStatus.textContent = "Reading menu text...";
+  setScanLoadingState("preparing", {
+    progress: 0.03,
+    pageIndex: 1,
+    pageTotal: sources.length,
+    detail: sources.length > 1 ? `Lining up ${sources.length} menu pages.` : "Lining up the menu page.",
+  });
   setView("scan-loading");
 
-  const sources = Array.isArray(source) ? source : [source];
   const sourceId = sourceIdFrom(sources, sourceLabel);
   let scanData = null;
   let rawText = "";
   try {
     if (looksLikeTexasChiliSource(sources, sourceLabel)) {
+      setScanLoadingState("scanning", {
+        progress: 0.18,
+        pageIndex: 1,
+        pageTotal: sources.length,
+        detail: "Recognized this menu. Pulling the saved layout into place.",
+      });
       await delay(900);
+      setScanLoadingState("building", {
+        progress: 0.82,
+        pageIndex: sources.length,
+        pageTotal: sources.length,
+        detail: "Sorting the menu into the useful dropdowns.",
+      });
       scanData = buildTexasChiliScan();
     } else {
-      const [texts] = await Promise.all([
-        Promise.all(
-          sources.map((item, index) =>
-            extractMenuText(item, (progress) => {
-              scannerStatus.textContent = `Reading menu text... page ${index + 1}/${sources.length} ${Math.round(progress * 100)}%`;
-            }),
-          ),
+      const ocrProgress = Array(sources.length).fill(0);
+      const updateOcrProgress = (index, progress) => {
+        ocrProgress[index] = Math.max(ocrProgress[index], Math.max(0, Math.min(1, progress || 0)));
+      };
+      const ocrCoveragePromise = Promise.all(
+        sources.map((item, index) =>
+          extractMenuText(item, (progress) => updateOcrProgress(index, progress)).catch(() => ""),
         ),
-        delay(2300),
-      ]);
-      rawText = texts.join("\n\n");
-      if (looksLikeTexasChiliSource(sources, sourceLabel, rawText)) {
-        scanData = buildTexasChiliScan();
-      } else {
-        try {
-          scannerStatus.textContent = "Understanding the menu with AI...";
-          scanData = await requestAiMenuScan(sources, sourceLabel, sourceId, rawText);
-        } catch {
+      );
+      try {
+        scannerStatus.textContent = "Understanding the menu with AI...";
+        setScanLoadingState("scanning", {
+          progress: 0.24,
+          pageIndex: 1,
+          pageTotal: sources.length,
+          detail: sources.length > 1
+            ? `Reading ${sources.length} pages before the decision engine runs.`
+            : "Reading the menu before the decision engine runs.",
+        });
+        rawText = (await ocrCoveragePromise).join("\n\n");
+        scanData = await requestAiMenuScan(sources, sourceLabel, sourceId, rawText);
+        if (scanData?.failure) {
+          throw new Error(scanData.failure.reason || "AI vision did not return enough structured menu items.");
+        }
+        setScanLoadingState("matching", {
+          progress: 0.74,
+          pageIndex: sources.length,
+          pageTotal: sources.length,
+          detail: "The backend Dine DNA engine is making the item decisions.",
+        });
+        setScanLoadingState("building", {
+          progress: 0.88,
+          pageIndex: sources.length,
+          pageTotal: sources.length,
+          detail: "Engine verdicts and OCR coverage notes are folded in.",
+        });
+      } catch (error) {
+        setScanLoadingState("building", {
+          progress: 0.58,
+          pageIndex: sources.length,
+          pageTotal: sources.length,
+          detail: "AI vision could not finish cleanly. Trying local OCR as backup.",
+        });
+
+        const texts = await ocrCoveragePromise;
+        const combinedProgress = ocrProgress.reduce((total, item) => total + item, 0) / Math.max(ocrProgress.length, 1);
+        setScanLoadingState("scanning", {
+          progress: 0.58 + combinedProgress * 0.24,
+          pageIndex: sources.length,
+          pageTotal: sources.length,
+          detail: "Using OCR backup to build the clearest menu we can.",
+        });
+        await delay(500);
+        rawText = texts.join("\n\n");
+
+        if (looksLikeTexasChiliSource(sources, sourceLabel, rawText)) {
+          setScanLoadingState("building", {
+            progress: 0.86,
+            pageIndex: sources.length,
+            pageTotal: sources.length,
+            detail: "OCR recognized the restaurant. Organizing the saved menu.",
+          });
+          scanData = buildTexasChiliScan();
+        } else {
           scanData = parseScanMeals(rawText, sourceLabel, sourceId);
+          if (scanData?.failure) {
+            scanData = scanFailureResult(sourceLabel, friendlyAiScanFailure(error), {
+              parserUsed: "openai-vision-ocr",
+              sourceId,
+            });
+          }
         }
       }
       if (scanData?.failure && shouldRetryWithRelaxedParser(sources, sourceLabel, rawText)) {
+        setScanLoadingState("building", {
+          progress: 0.9,
+          pageIndex: sources.length,
+          pageTotal: sources.length,
+          detail: "Trying a looser text pass before giving up on the photo.",
+        });
         const relaxedResult = parseScanMeals(rawText, sourceLabel, sourceId, { relaxedMode: true });
         if (!relaxedResult?.failure) {
           scanData = relaxedResult;
@@ -1495,6 +1946,12 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
       }
     }
   } catch {
+    setScanLoadingState("building", {
+      progress: 0.86,
+      pageIndex: sources.length,
+      pageTotal: sources.length,
+      detail: "Something went sideways, but we are still preparing a useful result.",
+    });
     scanData = scanFailureResult(sourceLabel, "OCR or menu parsing threw an error.");
   }
 
@@ -1514,6 +1971,12 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
   }
 
   publishScanDebug(scanData, sources, sourceLabel, rawText);
+  setScanLoadingState("building", {
+    progress: 0.94,
+    pageIndex: sources.length,
+    pageTotal: sources.length,
+    detail: "Final pass: safe, edit, skip, and dropdown organization.",
+  });
 
   state.scanMeals = scanData.items || [];
   state.scanSections = scanData.sections || [];
@@ -1522,16 +1985,30 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
     sourceId: scanData.sourceId,
     sourceName: scanData.sourceName,
     parserVersion: scanData.parserVersion,
+    engineVersion: scanData.engineVersion || null,
     parserUsed: scanData.parserUsed,
     confidence: scanData.confidence,
     title: scanData.title || "Uploaded menu",
     failure: scanData.failure || null,
     sourceTruth: scanData.sourceTruth || null,
+    counts: scanData.counts || null,
+    ocrCoverage: scanData.ocrCoverage || null,
     rejectedLineCount: scanData.rejectedLineCount || 0,
   };
   renderScanResults();
-  viewHistory[viewHistory.length - 1] = "scan-results";
-  setView("scan-results", { push: false });
+  setScanLoadingState("done", {
+    progress: 1,
+    pageIndex: sources.length,
+    pageTotal: sources.length,
+    detail: "Menu is ready.",
+  });
+  state.isScanInProgress = false;
+  state.eatReturnView = "scan-results";
+  const activeView = document.querySelector(".view.active")?.id;
+  if (activeView === "scan-loading") {
+    viewHistory[viewHistory.length - 1] = "scan-results";
+    setView("scan-results", { push: false });
+  }
 }
 
 function loadState() {
@@ -1603,18 +2080,19 @@ function removeFromScanOrder(index) {
 }
 
 function setView(viewId, options = {}) {
-  const { push = true } = options;
+  const { push = true, resolve = true } = options;
+  if (resolve) viewId = resolveViewTarget(viewId);
   const currentView = document.querySelector(".view.active")?.id;
   if (push && currentView && currentView !== viewId) {
     viewHistory.push(viewId);
   }
 
   views.forEach((view) => view.classList.toggle("active", view.id === viewId));
-  const eatViews = ["scan", "scan-loading", "scan-results", "search"];
   const activeNav = eatViews.includes(viewId) ? "dashboard" : viewId;
   navItems.forEach((item) => item.classList.toggle("active", item.dataset.view === activeNav));
   document.querySelector(".main-content").scrollTop = 0;
   document.querySelector(".app-shell").classList.toggle("scanner-active", viewId === "scan");
+  rememberEatView(viewId);
 
   if (viewId === "scan") {
     startCamera();
@@ -1622,19 +2100,35 @@ function setView(viewId, options = {}) {
     stopCamera();
   }
 
+  if (viewId !== "product-scan") {
+    stopProductBarcodeScanner();
+  }
+
   if (viewId === "scan-results") {
     renderScanResults();
+  }
+
+  if (viewId === "product-scan") {
+    renderProductResult();
   }
 }
 
 function goBack() {
-  if (viewHistory.length > 1) {
-    viewHistory.pop();
-    setView(viewHistory[viewHistory.length - 1], { push: false });
+  const currentView = document.querySelector(".view.active")?.id;
+  if (currentView === "product-scan") {
+    viewHistory.splice(0, viewHistory.length, "dashboard");
+    state.eatReturnView = "dashboard";
+    setView("dashboard", { push: false, resolve: false });
     return;
   }
 
-  setView("dashboard", { push: false });
+  if (viewHistory.length > 1) {
+    viewHistory.pop();
+    setView(viewHistory[viewHistory.length - 1], { push: false, resolve: false });
+    return;
+  }
+
+  setView("dashboard", { push: false, resolve: false });
 }
 
 function chipButton(group, value) {
@@ -1684,12 +2178,13 @@ function updateDashboard() {
 
   profileSummary.textContent = needs.length
     ? `${name} Dine DNA is ready for ${needs.slice(0, 2).join(" and ")}.`
-    : "Set your Dine DNA once. Then tap Scan Menu or Find Nearby.";
+    : "Set your Dine DNA once. Then tap Scan Menu or Scan Food.";
 }
 
 function statusClass(category) {
   if (category === "safe") return "status-safe";
-  if (category === "modify") return "status-modify";
+  if (category === "modify" || category === "confirm") return "status-modify";
+  if (category === "swap_required") return "status-swap";
   return "status-avoid";
 }
 
@@ -1705,8 +2200,153 @@ function instructionBlock(title, items) {
 
 function mealCategoryLabel(category) {
   if (category === "safe") return "Safe to order as-is";
+  if (category === "confirm") return "Ask before ordering";
   if (category === "modify") return "Can order with modifications";
+  if (category === "swap_required") return "Only if they can swap it";
   return "Don't order at all";
+}
+
+function scanItemText(meal) {
+  return `${meal.name || ""} ${meal.summary || ""} ${(meal.ingredients || []).join(" ")} ${(meal.tags || []).join(" ")} ${(meal.notes || []).join(" ")}`.toLowerCase();
+}
+
+function avoidConflictReasons(meal) {
+  if (meal.conflicts?.length) return meal.conflicts;
+  const text = scanItemText(meal);
+  const reasons = [];
+  const avoidTags = profileAvoidTags();
+  const hasPastaBase = textHasKeyword(text, ["pasta", "noodle", "noodles", "spaghetti", "linguine", "fettuccine", "ravioli", "tortellini", "gnocchi", "dumpling", "dumplings"]);
+  const hasDairySauce = textHasKeyword(text, ["cream", "cream sauce", "alfredo", "queso", "cheese sauce", "ranch"]);
+
+  avoidTags.forEach((tag) => {
+    const normalizedTag = tag === "egg" ? "eggs" : tag;
+    const keywords = menuKeywordGroups[normalizedTag] || [tag];
+    const tagHit = meal.tags?.includes(tag) || meal.tags?.includes(normalizedTag);
+    if (tagHit || textHasKeyword(text, keywords)) {
+      const term = displayTerm(tag);
+      if (tag === "gluten") {
+        reasons.push(hasPastaBase
+          ? "Pasta is gluten/wheat, so the main item may not be removable."
+          : "This looks gluten/wheat-based, so the main item may not be removable.");
+      } else if (tag === "dairy") {
+        reasons.push(hasDairySauce
+          ? "The sauce is made with dairy or cream, not just a topping to leave off."
+          : "Dairy looks built into this item, not just a topping to leave off.");
+      } else {
+        reasons.push(`The menu description points to ${term}, which conflicts with your Dine DNA.`);
+      }
+    }
+  });
+
+  if (!reasons.length) {
+    (meal.notes || [])
+      .filter((note) => /^Contains .+ based on the menu text\./.test(note))
+      .forEach((note) => reasons.push(note));
+  }
+
+  if (!reasons.length && meal.status === "Likely Unsafe") {
+    reasons.push("The core dish conflicts with your Dine DNA enough that it is safer to choose something else.");
+  }
+
+  return uniqueList(reasons);
+}
+
+function avoidRemovalText(part) {
+  return `Remove ${part}, or ask for a safe swap the menu already offers.`;
+}
+
+function avoidPerfectWorldMods(meal) {
+  const mods = [
+    ...(meal.substitutions || []),
+    ...(meal.remove || []).map(avoidRemovalText),
+    ...(meal.confirm || []),
+  ];
+
+  if (!mods.length) {
+    mods.push("Ask staff whether they can make a version that avoids the conflicting ingredients.");
+  }
+
+  return uniqueList(mods);
+}
+
+function cleanGuidanceText(item) {
+  return String(item || "")
+    .replace(/^Ask about sauces, oils, and prep surface\.$/, "Double-check sauces, oils, and the prep surface.")
+    .replace(/^Check for cross-contamination with gluten\.$/, "")
+    .replace(/^Ask if gluten can touch it during prep\.$/, "")
+    .replace(/^Confirm dairy-free sauces and toppings\.$/, "")
+    .replace(/^Ask for dairy-free sauces and toppings\.$/, "")
+    .replace(/^Ask whether the fryer is shared\.$/, "Ask if the fryer is shared.")
+    .replace(/^Ask for grilled or baked instead of fried\.$/, "Swap fried prep for grilled or baked, if they can.")
+    .replace(/^Make it a bowl or salad if possible\.$/, "Swap the bread or wrap for a bowl or salad, if available.")
+    .replace(/^Swap for rice or vegetables if the restaurant allows it\.$/, "Swap pasta or dumplings for rice or vegetables, if available.")
+    .replace(/^Please confirm ingredients with restaurant staff\.$/, "Ask one quick question before ordering.")
+    .replace(/^Cross-contamination may still be possible\.$/, "Prep surfaces can still matter.");
+}
+
+function profileSpecificChecks(meal) {
+  return uniqueList((meal.confirm || []).map(cleanGuidanceText).filter(Boolean));
+}
+
+function modificationSteps(meal) {
+  return uniqueList([
+    ...(meal.remove || []).map((part) => `Remove ${part}.`),
+    ...(meal.substitutions || []).map(cleanGuidanceText),
+  ].filter(Boolean));
+}
+
+function friendlyNotes(meal) {
+  return uniqueList((meal.notes || []).map(cleanGuidanceText).filter(Boolean));
+}
+
+function renderScanItemGuidance(meal, category) {
+  if (category === "avoid") {
+    return `
+      <div class="order-instructions">
+        <strong>Why you shouldn't eat</strong>
+        <div class="instruction-grid">
+          ${instructionBlock("Hard conflicts", avoidConflictReasons(meal))}
+          ${instructionBlock("Only if the kitchen can do this", avoidPerfectWorldMods(meal).map(cleanGuidanceText))}
+        </div>
+      </div>
+    `;
+  }
+
+  if (category === "confirm") {
+    return `
+      <div class="order-instructions">
+        <strong>Ask first</strong>
+        <div class="instruction-grid">
+          ${instructionBlock("Why to ask", meal.conflicts?.length ? meal.conflicts : friendlyNotes(meal))}
+          ${instructionBlock("Double-check", profileSpecificChecks(meal))}
+        </div>
+      </div>
+    `;
+  }
+
+  if (category === "swap_required") {
+    return `
+      <div class="order-instructions">
+        <strong>Only if they can swap it</strong>
+        <div class="instruction-grid">
+          ${instructionBlock("Conflict", avoidConflictReasons(meal))}
+          ${instructionBlock("Swap needed", modificationSteps(meal))}
+          ${instructionBlock("Double-check", profileSpecificChecks(meal))}
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="order-instructions">
+      <strong>How to order it</strong>
+      <div class="instruction-grid">
+        ${instructionBlock("Double-check", profileSpecificChecks(meal))}
+        ${instructionBlock("Make it work", modificationSteps(meal))}
+        ${instructionBlock("Good to know", friendlyNotes(meal))}
+      </div>
+    </div>
+  `;
 }
 
 function renderIngredients(meal) {
@@ -1718,6 +2358,19 @@ function renderIngredients(meal) {
       <span>${ingredients.join(", ")}</span>
     </div>
   `;
+}
+
+function scanItemDescription(meal) {
+  const details = (meal.ingredients || [])
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const nameText = comparisonText(meal.name);
+  const detailText = comparisonText(details);
+  const base = details && detailText !== nameText ? details : meal.summary;
+  const price = meal.price && !base.includes(meal.price) ? ` ${meal.price}` : "";
+  return `${base || meal.summary || "Menu item from the uploaded scan."}${price}`.trim();
 }
 
 function orderText(meal) {
@@ -1764,6 +2417,19 @@ function showActionToast(message, iconType = "plus") {
   window.setTimeout(() => toast.classList.add("show"), 20);
   window.setTimeout(() => toast.classList.remove("show"), 1450);
   window.setTimeout(() => toast.remove(), 1850);
+}
+
+function showSavedButtonFeedback(button) {
+  if (!button) return;
+  const originalLabel = button.dataset.originalLabel || button.textContent.trim() || "Save Dine DNA";
+  button.dataset.originalLabel = originalLabel;
+  window.clearTimeout(button.savedConfirmationTimer);
+  button.textContent = "Saved";
+  button.classList.add("saved-confirmation");
+  button.savedConfirmationTimer = window.setTimeout(() => {
+    button.textContent = button.dataset.originalLabel || "Save Dine DNA";
+    button.classList.remove("saved-confirmation");
+  }, 1400);
 }
 
 function renderRating(meal) {
@@ -1835,8 +2501,11 @@ function findMeal(name) {
 function findMealCategory(name) {
   const scanMeal = state.scanMeals.find((meal) => meal.name === name);
   if (scanMeal) {
+    if (scanMeal.category) return scanMeal.category;
     if (scanMeal.status === "Safe to Order As-Is") return "safe";
+    if (scanMeal.status === "Ask Before Ordering") return "confirm";
     if (scanMeal.status === "Safe With Modifications") return "modify";
+    if (scanMeal.status === "Only If They Can Swap It") return "swap_required";
     return "avoid";
   }
   return Object.entries(recommendations).find(([, meals]) =>
@@ -1870,14 +2539,12 @@ function categoryForSection(title) {
   return match?.id || "mains";
 }
 
-function sectionsForActiveCategory() {
-  return state.scanSections.filter((section) => categoryForSection(section.title) === state.activeMenuCategory);
-}
-
 function scanStatusRank(status) {
   if (status === "Safe to Order As-Is") return 0;
-  if (status === "Safe With Modifications") return 1;
-  return 2;
+  if (status === "Ask Before Ordering") return 1;
+  if (status === "Safe With Modifications") return 2;
+  if (status === "Only If They Can Swap It") return 3;
+  return 4;
 }
 
 function orderedScanItems(items) {
@@ -1887,69 +2554,41 @@ function orderedScanItems(items) {
 function scanSectionStatusCounts(items) {
   return items.reduce(
     (counts, item) => {
-      if (item.status === "Safe to Order As-Is") counts.safe += 1;
-      else if (item.status === "Safe With Modifications") counts.modify += 1;
+      const category = item.category || (item.status === "Safe to Order As-Is"
+        ? "safe"
+        : item.status === "Ask Before Ordering"
+          ? "confirm"
+          : item.status === "Safe With Modifications"
+            ? "modify"
+            : item.status === "Only If They Can Swap It"
+              ? "swap_required"
+              : "avoid");
+      if (category === "safe") counts.safe += 1;
+      else if (category === "confirm") counts.confirm += 1;
+      else if (category === "modify") counts.modify += 1;
+      else if (category === "swap_required") counts.swapRequired += 1;
       else counts.avoid += 1;
       return counts;
     },
-    { safe: 0, modify: 0, avoid: 0 },
+    { safe: 0, confirm: 0, modify: 0, swapRequired: 0, avoid: 0 },
   );
 }
 
+function simpleScanStatusCounts(counts) {
+  return {
+    safe: counts.safe || 0,
+    modify: (counts.confirm || 0) + (counts.modify || 0) + (counts.swapRequired || 0),
+    avoid: counts.avoid || 0,
+  };
+}
+
 function renderSectionCountChips(items) {
-  const counts = scanSectionStatusCounts(items);
+  const counts = simpleScanStatusCounts(scanSectionStatusCounts(items));
   return `
     <div class="section-count-chips" aria-label="Section fit counts">
-      <span class="section-count status-safe" title="Safe to order as-is">${counts.safe}</span>
-      <span class="section-count status-modify" title="Can order with modifications">${counts.modify}</span>
-      <span class="section-count status-avoid" title="Don't order at all">${counts.avoid}</span>
-    </div>
-  `;
-}
-
-function escapeAttribute(value) {
-  return String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function filteredScanItems(section) {
-  const query = state.scanSearchQuery.trim().toLowerCase();
-  const items = orderedScanItems(section.items);
-  if (!query) return items;
-  return items.filter((item) => [item.name, item.description, item.status, ...(item.tags || [])].join(" ").toLowerCase().includes(query));
-}
-
-function renderScanMenuSearch() {
-  return `
-    <label class="scan-menu-search">
-      <span>Search this menu</span>
-      <input data-scan-menu-search type="search" placeholder="Search menu items" value="${escapeAttribute(state.scanSearchQuery)}" />
-    </label>
-  `;
-}
-
-function renderScanCategoryTabs() {
-  const counts = scanMenuCategories.map((category) => ({
-    ...category,
-    count: state.scanSections
-      .filter((section) => categoryForSection(section.title) === category.id)
-      .reduce((total, section) => total + section.items.length, 0),
-  }));
-  const visible = counts.filter((category) => category.count > 0 || ["mains", "appetizers", "sides", "drinks", "desserts"].includes(category.id));
-  if (!visible.some((category) => category.id === state.activeMenuCategory)) {
-    state.activeMenuCategory = visible.find((category) => category.count > 0)?.id || "mains";
-  }
-  return `
-    <div class="scan-category-tabs" role="tablist" aria-label="Menu categories">
-      ${visible
-        .map(
-          (category) => `
-            <button class="scan-tab ${state.activeMenuCategory === category.id ? "active" : ""}" data-scan-category="${category.id}" type="button" role="tab" aria-selected="${state.activeMenuCategory === category.id}">
-              <span>${category.label}</span>
-              <small>${category.count}</small>
-            </button>
-          `,
-        )
-        .join("")}
+      <span class="section-count status-safe" title="Good to order as-is">${counts.safe}</span>
+      <span class="section-count status-modify" title="Safe with modifications">${counts.modify}</span>
+      <span class="section-count status-avoid" title="Not safe">${counts.avoid}</span>
     </div>
   `;
 }
@@ -2038,6 +2677,30 @@ function showOrderReview() {
   window.setTimeout(() => sheet.classList.add("show"), 20);
 }
 
+function showAiRecommendation() {
+  const shell = document.querySelector(".app-shell");
+  const recommended = state.recommendedOrder;
+  if (!shell || !recommended) return;
+  shell.querySelector(".order-review-sheet")?.remove();
+  const sheet = document.createElement("div");
+  sheet.className = "order-review-sheet";
+  sheet.innerHTML = `
+    <div class="order-review-card" role="dialog" aria-modal="true" aria-label="AI recommendation">
+      <button class="icon-button order-review-close" data-close-order-review type="button" aria-label="Close AI recommendation">
+        ${renderActionIcon("remove")}
+      </button>
+      <p class="eyebrow">AI Recommendation</p>
+      <h2>${recommended.unavailable ? "No low-effort order found" : "Best low-effort order"}</h2>
+      <div class="recommended-order">
+        <p>${recommended.summary}</p>
+        ${recommended.instructions?.length ? `<ul>${recommended.instructions.map((item) => `<li>${item}</li>`).join("")}</ul>` : ""}
+      </div>
+    </div>
+  `;
+  shell.appendChild(sheet);
+  window.setTimeout(() => sheet.classList.add("show"), 20);
+}
+
 function closeOrderReview() {
   const sheet = document.querySelector(".order-review-sheet");
   if (!sheet) return;
@@ -2049,8 +2712,9 @@ function renderScanResults() {
   if (state.scanMeta?.failure) {
     if (scanMenuTitle) scanMenuTitle.textContent = "Menu scan";
     if (scanVerdictPrimary) scanVerdictPrimary.textContent = state.scanMeta.failure.title;
-    if (scanVerdictSecondary) scanVerdictSecondary.textContent = "We couldn’t read enough clear menu text from that photo.";
-    if (menuSectionList) menuSectionList.innerHTML = `${renderScanDebugDetails()}${renderScanFailureHelp()}`;
+    if (scanVerdictSecondary) scanVerdictSecondary.textContent = state.scanMeta.failure.message || "We couldn’t read enough clear menu text from that photo.";
+    if (scanSafetyDisclaimer) scanSafetyDisclaimer.hidden = true;
+    if (menuSectionList) menuSectionList.innerHTML = renderScanFailureHelp();
     renderScanOrder();
     return;
   }
@@ -2059,14 +2723,28 @@ function renderScanResults() {
     if (scanMenuTitle) scanMenuTitle.textContent = "Menu scan";
     if (scanVerdictPrimary) scanVerdictPrimary.textContent = "Upload a menu photo and we’ll read the text here.";
     if (scanVerdictSecondary) scanVerdictSecondary.textContent = "Once we can read the menu, we’ll break it down by section using only the menu itself.";
+    if (scanSafetyDisclaimer) scanSafetyDisclaimer.hidden = true;
     if (menuSectionList) menuSectionList.innerHTML = `<div class="empty-state">Upload a menu photo and we’ll break it down here.</div>`;
     renderScanOrder();
     return;
   }
 
-  const safeCount = state.scanMeals.filter((meal) => meal.status === "Safe to Order As-Is").length;
-  const modifyCount = state.scanMeals.filter((meal) => meal.status === "Safe With Modifications").length;
-  const avoidCount = state.scanMeals.filter((meal) => meal.status === "Likely Unsafe").length;
+  const counts = state.scanMeta?.counts || state.scanMeals.reduce(
+    (next, meal) => {
+      const category = meal.category || findMealCategory(meal.name);
+      if (category === "safe") next.safe += 1;
+      else if (category === "confirm") next.confirm += 1;
+      else if (category === "modify") next.modify += 1;
+      else if (category === "swap_required") next.swapRequired += 1;
+      else next.avoid += 1;
+      return next;
+    },
+    { safe: 0, confirm: 0, modify: 0, swapRequired: 0, avoid: 0 },
+  );
+  const simpleCounts = simpleScanStatusCounts(counts);
+  const safeCount = simpleCounts.safe;
+  const modifyCount = simpleCounts.modify;
+  const avoidCount = simpleCounts.avoid;
 
   if (scanMenuTitle) scanMenuTitle.textContent = state.scanMeta?.title || "Menu scan";
 
@@ -2081,19 +2759,19 @@ function renderScanResults() {
   }
 
   if (scanVerdictSecondary) {
-    scanVerdictSecondary.textContent = `${safeCount} safe, ${modifyCount} with edits, ${avoidCount} don’t eat.`;
+    scanVerdictSecondary.textContent = `${safeCount} good as-is, ${modifyCount} with modifications, ${avoidCount} not safe.`;
   }
+  if (scanSafetyDisclaimer) scanSafetyDisclaimer.hidden = false;
 
   if (menuSectionList) {
-    const visibleSections = sectionsForActiveCategory();
+    const visibleSections = state.scanSections;
     menuSectionList.innerHTML = state.scanSections.length
-      ? `${renderScanDebugDetails()}${renderScanCategoryTabs()}${renderScanMenuSearch()}${visibleSections.length
+      ? `${visibleSections.length
         ? visibleSections
-          .map((section) => ({ section, items: filteredScanItems(section) }))
-          .filter(({ items }) => !state.scanSearchQuery.trim() || items.length)
+          .map((section) => ({ section, items: orderedScanItems(section.items) }))
           .map(
             ({ section, items }) => `
-              <details class="menu-section" ${state.scanSearchQuery.trim() ? "open" : ""}>
+              <details class="menu-section">
                 <summary>
                   <strong>${section.title}</strong>
                   ${renderSectionCountChips(items)}
@@ -2101,29 +2779,25 @@ function renderScanResults() {
                 <div class="menu-section-items">
                   ${items
                     .map((meal) => {
-                      const category =
+                      const category = meal.category || (
                         meal.status === "Safe to Order As-Is"
                           ? "safe"
-                          : meal.status === "Safe With Modifications"
-                            ? "modify"
-                            : "avoid";
+                          : meal.status === "Ask Before Ordering"
+                            ? "confirm"
+                            : meal.status === "Safe With Modifications"
+                              ? "modify"
+                              : meal.status === "Only If They Can Swap It"
+                                ? "swap_required"
+                                : "avoid"
+                      );
                       return `
                         <article class="scan-item-card">
                           <div class="meal-header">
-                            <h3>${meal.name}</h3>
                             <span class="status-pill ${statusClass(category)}">${mealCategoryLabel(category)}</span>
-                            <p>${meal.summary}</p>
+                            <h3>${meal.name}</h3>
+                            <p>${scanItemDescription(meal)}</p>
                           </div>
-                          ${renderIngredients(meal)}
-                          <div class="order-instructions">
-                            <strong>${category === "avoid" ? "Why not" : "Order guidance"}</strong>
-                            <div class="instruction-grid">
-                              ${instructionBlock("Remove", meal.remove)}
-                              ${instructionBlock("Say this", meal.substitutions)}
-                              ${instructionBlock("Confirm", meal.confirm)}
-                              ${instructionBlock("Notes", meal.notes)}
-                            </div>
-                          </div>
+                          ${renderScanItemGuidance(meal, category)}
                           <div class="card-actions">
                             <button class="icon-button scan-action-button" data-add-order="${meal.name}" type="button" aria-label="Add to order">
                               ${renderActionIcon("plus")}
@@ -2171,11 +2845,7 @@ function renderScanOrder() {
 
   scanOrderList.innerHTML = recommended
     ? `
-      <div class="recommended-order">
-        <strong>Best low-effort order</strong>
-        <p>${recommended.summary}</p>
-        ${recommended.instructions.length ? `<ul>${recommended.instructions.map((item) => `<li>${item}</li>`).join("")}</ul>` : ""}
-      </div>
+      <button class="secondary-action ai-recommendation-button" data-ai-recommendation type="button">See AI Recommendation</button>
       ${chosen}
       ${state.scanOrder.length ? `<button class="primary-action review-order-button" data-review-order type="button">Review My Order</button>` : ""}
     `
@@ -2183,13 +2853,14 @@ function renderScanOrder() {
 }
 
 function scanVerdictSnapshot() {
-  const safeCount = state.scanMeals.filter((meal) => meal.status === "Safe to Order As-Is").length;
-  const modifyCount = state.scanMeals.filter((meal) => meal.status === "Safe With Modifications").length;
-  const avoidCount = state.scanMeals.filter((meal) => meal.status === "Likely Unsafe").length;
+  const counts = simpleScanStatusCounts(state.scanMeta?.counts || scanSectionStatusCounts(state.scanMeals));
+  const safeCount = counts.safe;
+  const middleCount = counts.modify;
+  const avoidCount = counts.avoid;
   const summary = [];
-  summary.push(`${safeCount} solid pick${safeCount === 1 ? "" : "s"}`);
-  if (modifyCount) summary.push(`${modifyCount} option${modifyCount === 1 ? "" : "s"} with edits`);
-  if (avoidCount) summary.push(`${avoidCount} item${avoidCount === 1 ? "" : "s"} to skip`);
+  summary.push(`${safeCount} good as-is`);
+  if (middleCount) summary.push(`${middleCount} with modifications`);
+  if (avoidCount) summary.push(`${avoidCount} not safe`);
   return summary.join(" · ");
 }
 
@@ -2244,9 +2915,271 @@ function renderSavedOrders() {
     .join("");
 }
 
+function formatProductTag(value) {
+  return String(value || "")
+    .replace(/^en:/, "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function numberFact(value, suffix = "") {
+  if (value === null || value === undefined || value === "") return "Unknown";
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return "Unknown";
+  return `${Math.round(numeric * 10) / 10}${suffix}`;
+}
+
+function productText(product) {
+  return [
+    product?.name,
+    product?.brand,
+    product?.ingredientsText,
+    ...(product?.allergens || []),
+    ...(product?.traces || []),
+    ...(product?.labels || []),
+    ...(product?.categories || []),
+  ]
+    .join(" ")
+    .toLowerCase()
+    .replace(/en:/g, " ");
+}
+
+function productConflictReasons(product) {
+  const text = productText(product);
+  const reasons = [];
+  state.profile.avoidFoods.forEach((food) => {
+    const keywords = keywordsForAvoidItem(food);
+    if (textHasKeyword(text, keywords)) {
+      reasons.push(`${food} appears in the ingredients, allergens, traces, labels, or categories.`);
+    }
+  });
+
+  state.profile.eatingStyle.forEach((style) => {
+    const keywords = keywordsForAvoidItem(style);
+    if (keywords.length && textHasKeyword(text, keywords)) {
+      reasons.push(`${style} may not fit because the product data points to ${keywords.slice(0, 2).join(" or ")}.`);
+    }
+  });
+
+  if (state.profile.healthNeeds.includes("No Fried Foods") && textHasKeyword(text, menuKeywordGroups.fried)) {
+    reasons.push("This may be fried or breaded.");
+  }
+
+  return uniqueList(reasons);
+}
+
+function productGoalNotes(product) {
+  const nutriments = product?.nutriments || {};
+  const notes = [];
+  if (state.profile.healthNeeds.includes("Low Sugar") && Number(nutriments.sugars100g) > 8) {
+    notes.push(`Sugar is ${numberFact(nutriments.sugars100g, "g")} per 100g.`);
+  }
+  if (state.profile.healthNeeds.includes("Low Sodium") && Number(nutriments.salt100g) > 0.7) {
+    notes.push(`Salt is ${numberFact(nutriments.salt100g, "g")} per 100g.`);
+  }
+  if ((state.profile.healthNeeds.includes("Low Carb") || state.profile.healthNeeds.includes("Diabetic-Friendly")) && Number(nutriments.carbohydrates100g) > 20) {
+    notes.push(`Carbs are ${numberFact(nutriments.carbohydrates100g, "g")} per 100g.`);
+  }
+  if (state.profile.healthNeeds.includes("High Protein") && Number(nutriments.proteins100g) >= 10) {
+    notes.push(`Protein is ${numberFact(nutriments.proteins100g, "g")} per 100g.`);
+  }
+  if (product?.novaGroup && Number(product.novaGroup) >= 4) {
+    notes.push("Open Food Facts marks this as NOVA 4, usually ultra-processed.");
+  }
+  return uniqueList(notes);
+}
+
+function productVerdict(product) {
+  const conflicts = productConflictReasons(product);
+  const notes = productGoalNotes(product);
+  if (conflicts.length) {
+    return {
+      category: "avoid",
+      label: "Likely not a fit",
+      summary: "This product conflicts with your Dine DNA based on Open Food Facts data.",
+      conflicts,
+      notes,
+    };
+  }
+  if (notes.length || !product?.ingredientsText) {
+    return {
+      category: "modify",
+      label: "Check details",
+      summary: product?.ingredientsText
+        ? "No direct ingredient conflict found, but a nutrition or processing detail is worth checking."
+        : "Open Food Facts does not have full ingredients for this product yet.",
+      conflicts: [],
+      notes,
+    };
+  }
+  return {
+    category: "safe",
+    label: "Looks compatible",
+    summary: "No direct conflict found against your current Dine DNA.",
+    conflicts: [],
+    notes,
+  };
+}
+
+function renderProductLookupLoading(barcode) {
+  if (!productResult) return;
+  productResult.innerHTML = `
+    <div class="product-card">
+      <div class="meal-header">
+        <h3>Looking up ${barcode}</h3>
+        <span class="status-pill status-modify">Open Food Facts</span>
+        <p>Checking the product database now.</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderProductResult() {
+  if (!productResult) return;
+  const lookup = state.productLookup;
+  if (!lookup) {
+    productResult.innerHTML = `<div class="empty-state">Scan a package barcode to check ingredients and nutrition facts.</div>`;
+    return;
+  }
+
+  if (!lookup.ok || !lookup.product) {
+    productResult.innerHTML = `
+      <div class="product-card">
+        <div class="meal-header">
+          <h3>Product not found</h3>
+          <span class="status-pill status-modify">No match</span>
+          <p>Open Food Facts did not have a product for barcode ${lookup.barcode || "that code"}.</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const product = lookup.product;
+  const verdict = productVerdict(product);
+  const nutriments = product.nutriments || {};
+  const allergens = [...(product.allergens || []), ...(product.traces || [])].map(formatProductTag);
+  const facts = [
+    ["Nutri-Score", product.nutriScore ? product.nutriScore.toUpperCase() : "Unknown"],
+    ["NOVA", product.novaGroup ? `Group ${product.novaGroup}` : "Unknown"],
+    ["Sugar", numberFact(nutriments.sugars100g, "g")],
+    ["Protein", numberFact(nutriments.proteins100g, "g")],
+  ];
+
+  productResult.innerHTML = `
+    <article class="product-card">
+      <div class="product-header">
+        ${product.imageUrl ? `<img src="${product.imageUrl}" alt="${product.name || "Product"}" />` : `<span class="choice-icon">${renderActionIcon("check")}</span>`}
+        <div>
+          <h3>${product.name || "Unnamed product"}</h3>
+          <p>${[product.brand, product.quantity].filter(Boolean).join(" · ") || `Barcode ${lookup.barcode}`}</p>
+        </div>
+      </div>
+      <span class="status-pill ${statusClass(verdict.category)}">${verdict.label}</span>
+      <p>${verdict.summary}</p>
+      <div class="product-facts">
+        ${facts.map(([label, value]) => `<div class="product-fact"><strong>${label}</strong><span>${value}</span></div>`).join("")}
+      </div>
+      ${instructionBlock("Dine DNA conflicts", verdict.conflicts)}
+      ${instructionBlock("Nutrition notes", verdict.notes)}
+      ${instructionBlock("Allergens and traces", allergens.length ? allergens : ["None listed in Open Food Facts."])}
+      <div class="ingredient-list">
+        <strong>Ingredients</strong>
+        <span>${product.ingredientsText || "Ingredients are not listed for this product yet."}</span>
+      </div>
+    </article>
+  `;
+}
+
+async function lookupOpenFoodFactsProduct(barcode) {
+  const cleanBarcode = String(barcode || "").replace(/\D/g, "");
+  if (!cleanBarcode) {
+    showActionToast("Enter a barcode", "copy");
+    productBarcode?.focus();
+    return;
+  }
+
+  renderProductLookupLoading(cleanBarcode);
+  try {
+    const response = await fetch(`${openFoodFactsApiUrl}/${encodeURIComponent(cleanBarcode)}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(readableApiError(errorText || `Lookup failed with ${response.status}`));
+    }
+    state.productLookup = await response.json();
+  } catch (error) {
+    state.productLookup = {
+      ok: false,
+      barcode: cleanBarcode,
+      product: null,
+      message: error.message || "Open Food Facts lookup failed.",
+    };
+  }
+  renderProductResult();
+}
+
+function stopProductBarcodeScanner() {
+  state.productScanActive = false;
+  if (state.productDetectorFrame) {
+    cancelAnimationFrame(state.productDetectorFrame);
+    state.productDetectorFrame = null;
+  }
+  if (state.productCameraStream) {
+    state.productCameraStream.getTracks().forEach((track) => track.stop());
+    state.productCameraStream = null;
+  }
+  if (productCameraPreview) productCameraPreview.srcObject = null;
+  productCameraWrap?.classList.remove("active");
+}
+
+async function startProductBarcodeScanner() {
+  if (!("BarcodeDetector" in window)) {
+    showActionToast("Type the barcode instead", "copy");
+    productBarcode?.focus();
+    return;
+  }
+
+  try {
+    const detector = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    state.productCameraStream = stream;
+    state.productScanActive = true;
+    productCameraPreview.srcObject = stream;
+    productCameraWrap?.classList.add("active");
+    await productCameraPreview.play();
+
+    const scanFrame = async () => {
+      if (!state.productScanActive) return;
+      try {
+        const codes = await detector.detect(productCameraPreview);
+        const barcode = codes[0]?.rawValue?.replace(/\D/g, "");
+        if (barcode) {
+          productBarcode.value = barcode;
+          stopProductBarcodeScanner();
+          lookupOpenFoodFactsProduct(barcode);
+          return;
+        }
+      } catch {
+        // Some browsers throw until the video has enough frames; keep scanning.
+      }
+      state.productDetectorFrame = requestAnimationFrame(scanFrame);
+    };
+
+    scanFrame();
+  } catch {
+    stopProductBarcodeScanner();
+    showActionToast("Camera unavailable", "copy");
+    productBarcode?.focus();
+  }
+}
+
 function renderRestaurants() {
-  const query = document.querySelector("#restaurantSearch").value.trim().toLowerCase();
-  const filter = document.querySelector("#compatibilityFilter").value;
+  const restaurantSearch = document.querySelector("#restaurantSearch");
+  const compatibilityFilter = document.querySelector("#compatibilityFilter");
+  if (!restaurantList || !restaurantSearch || !compatibilityFilter) return;
+
+  const query = restaurantSearch.value.trim().toLowerCase();
+  const filter = compatibilityFilter.value;
 
   const filtered = restaurants.filter((restaurant) => {
     const matchesQuery = [restaurant.name, restaurant.cuisine, restaurant.details]
@@ -2329,6 +3262,9 @@ function addScanPhoto(source) {
 }
 
 function resetScanRun() {
+  state.scanRequestId += 1;
+  state.isScanInProgress = false;
+  state.eatReturnView = "scan";
   state.scanPhotos = [];
   state.scanSource = null;
   state.scanMeta = null;
@@ -2341,6 +3277,7 @@ function resetScanRun() {
   if (scanMenuTitle) scanMenuTitle.textContent = "Menu scan";
   if (scanVerdictPrimary) scanVerdictPrimary.textContent = "Upload a menu photo and we’ll read the text here.";
   if (scanVerdictSecondary) scanVerdictSecondary.textContent = "Ready for your new scan.";
+  if (scanSafetyDisclaimer) scanSafetyDisclaimer.hidden = true;
   if (menuSectionList) menuSectionList.innerHTML = `<div class="empty-state">Upload a menu photo and we’ll read it here.</div>`;
 }
 
@@ -2463,17 +3400,15 @@ function bindEvents() {
       return;
     }
 
-    const categoryButton = event.target.closest("[data-scan-category]");
-    if (categoryButton) {
-      state.activeMenuCategory = categoryButton.dataset.scanCategory;
-      state.scanSearchQuery = "";
-      renderScanResults();
-      return;
-    }
-
     const reviewOrderButton = event.target.closest("[data-review-order]");
     if (reviewOrderButton) {
       showOrderReview();
+      return;
+    }
+
+    const aiRecommendationButton = event.target.closest("[data-ai-recommendation]");
+    if (aiRecommendationButton) {
+      showAiRecommendation();
       return;
     }
 
@@ -2531,19 +3466,8 @@ function bindEvents() {
     }
   });
 
-  document.body.addEventListener("input", (event) => {
-    const scanSearch = event.target.closest("[data-scan-menu-search]");
-    if (scanSearch) {
-      state.scanSearchQuery = scanSearch.value;
-      renderScanResults();
-      const nextSearch = document.querySelector("[data-scan-menu-search]");
-      nextSearch?.focus();
-      nextSearch?.setSelectionRange(state.scanSearchQuery.length, state.scanSearchQuery.length);
-    }
-  });
-
   document.querySelector("#openScan")?.addEventListener("click", () => setView("scan"));
-  document.querySelector("#openSearch")?.addEventListener("click", () => setView("search"));
+  document.querySelector("#openProductScan")?.addEventListener("click", () => setView("product-scan"));
 
   profileForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -2554,7 +3478,8 @@ function bindEvents() {
     };
     saveProfile();
     updateDashboard();
-    setView("dashboard");
+    showSavedButtonFeedback(profileForm.querySelector("[type='submit']"));
+    showActionToast("Dine DNA saved", "check");
   });
 
   document.querySelector("#capturePhoto").addEventListener("click", captureMenuPhoto);
@@ -2563,6 +3488,13 @@ function bindEvents() {
     state.flashOn = !state.flashOn;
     event.currentTarget.classList.toggle("active", state.flashOn);
   });
+
+  productLookupForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    lookupOpenFoodFactsProduct(productBarcode?.value);
+  });
+
+  document.querySelector("#startProductScanner")?.addEventListener("click", startProductBarcodeScanner);
 
 document.querySelector("#menuImage").addEventListener("change", (event) => {
   const files = [...event.target.files];
@@ -2591,8 +3523,8 @@ nextFromCamera.addEventListener("click", () => {
   analyzeMenuSource(state.scanSource, "Captured menu");
 });
 
-  document.querySelector("#restaurantSearch").addEventListener("input", renderRestaurants);
-  document.querySelector("#compatibilityFilter").addEventListener("change", renderRestaurants);
+  document.querySelector("#restaurantSearch")?.addEventListener("input", renderRestaurants);
+  document.querySelector("#compatibilityFilter")?.addEventListener("change", renderRestaurants);
 }
 
 const texasChiliTestProfiles = [

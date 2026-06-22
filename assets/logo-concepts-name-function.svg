@@ -1,0 +1,161 @@
+<svg width="1500" height="980" viewBox="0 0 1500 980" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">What 2 Eat name and function logo concepts</title>
+  <desc id="desc">Five logo icon concepts that connect the What 2 Eat name with menu scanning and confident food choice.</desc>
+  <rect width="1500" height="980" fill="#FBFAF6"/>
+  <style>
+    .card { fill: #fff; stroke: #dce3e8; stroke-width: 2; }
+    .bg { fill: #1f2933; }
+    .green { fill: #20a464; }
+    .mint { fill: #d9f5df; }
+    .white { fill: #fff; }
+    .ink { fill: #1f2933; }
+    .label { font: 900 28px Inter, Arial, sans-serif; fill: #1f2933; text-anchor: middle; }
+    .note { font: 650 17px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+    .tiny { font: 800 12px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+  </style>
+
+  <text x="750" y="58" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="950" fill="#1f2933">More “What 2 Eat” + Product Function</text>
+  <text x="750" y="91" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="650" fill="#65717f">These use the “2” as a choice path, scan result, or order decision without becoming text-heavy.</text>
+
+  <!-- 1. The 2 Choice -->
+  <g transform="translate(76 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path d="M91 82C99 65 116 57 135 61C155 65 164 82 158 99C154 111 144 119 130 128L103 145H159" stroke="#d9f5df" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M89 113L111 135L153 91" stroke="#20a464" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">2 Choice</text>
+    <text class="note" x="125" y="260">the name becomes the answer</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path d="M7 8C9 4 13 3 16 4C20 5 21 9 18 12L10 18H19" stroke="#d9f5df" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M6 13L10 17L18 8.5" stroke="#20a464" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path d="M52 7C55 1 61 0 65 2C71 4 72 9 68 13L56 22H70" stroke="#d9f5df" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M52 15L57 20L68 8.5" stroke="#20a464" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path d="M106 6C110 -1 118 -2 124 0C131 3 132 10 126 15L111 26H129" stroke="#d9f5df" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M106 17L113 24L127 9" stroke="#20a464" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 2. Scan 2 Eat -->
+  <g transform="translate(350 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="green" d="M89 82H75V68H103V96H89V82ZM161 82H175V68H147V96H161V82ZM89 138H75V152H103V124H89V138ZM161 138H175V152H147V124H161V138Z"/>
+    <path d="M105 86C111 73 125 67 139 70C154 74 160 87 156 99C152 108 145 114 135 120L113 134H158" stroke="#d9f5df" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M100 126L114 140L149 104" stroke="#20a464" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">Scan 2 Eat</text>
+    <text class="note" x="125" y="260">scan turns into choice</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path class="green" d="M6 7H3V4H9V10H6V7ZM18 7H21V4H15V10H18V7ZM6 17H3V20H9V14H6V17ZM18 17H21V20H15V14H18V17Z"/>
+      <path d="M8 9C10 6 14 5 16 7C19 9 18 12 15 14L10 17H18" stroke="#d9f5df" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M8 15L11 18L17 11" stroke="#20a464" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="green" d="M52 7H48V3H57V12H52V7ZM68 7H72V3H63V12H68V7ZM52 21H48V25H57V16H52V21ZM68 21H72V25H63V16H68V21Z"/>
+      <path d="M55 8C58 3 64 2 67 5C71 8 70 12 66 15L57 21H70" stroke="#d9f5df" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M54 17L59 22L68 12" stroke="#20a464" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="green" d="M106 6H101V1H112V12H106V6ZM126 6H131V1H120V12H126V6ZM106 26H101V31H112V20H106V26ZM126 26H131V31H120V20H126V26Z"/>
+      <path d="M110 7C113 1 121 0 126 4C131 8 129 13 124 17L113 25H129" stroke="#d9f5df" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M108 20L114 26L126 13" stroke="#20a464" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 3. What Plate -->
+  <g transform="translate(624 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <circle class="mint" cx="125" cy="111" r="43"/>
+    <path d="M112 94C115 83 126 78 137 82C148 86 153 96 149 106C146 114 139 119 130 124V132" stroke="#1f2933" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle class="green" cx="130" cy="146" r="8"/>
+    <path d="M91 111L108 128L143 93" stroke="#20a464" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">What Plate</text>
+    <text class="note" x="125" y="260">question answered by food</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <circle class="mint" cx="12" cy="12" r="7"/>
+      <path d="M10 9C11 7 14 7 15 8.5C17 10.5 15 12 13 13V14" stroke="#1f2933" stroke-width="2.2" stroke-linecap="round"/>
+      <circle class="green" cx="13" cy="17" r="1.7"/>
+      <path d="M6 12L9.5 15.5L17 8" stroke="#20a464" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <circle class="mint" cx="60" cy="12" r="9.5"/>
+      <path d="M57 8C59 4 64 4 66 7C69 10 66 13 62 15V17" stroke="#1f2933" stroke-width="3.1" stroke-linecap="round"/>
+      <circle class="green" cx="62" cy="21" r="2.2"/>
+      <path d="M52 13L57 18L67.5 7.5" stroke="#20a464" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <circle class="mint" cx="116" cy="12" r="12"/>
+      <path d="M112 7C115 2 121 2 124 6C128 10 124 14 120 16V19" stroke="#1f2933" stroke-width="3.8" stroke-linecap="round"/>
+      <circle class="green" cx="120" cy="24" r="2.8"/>
+      <path d="M106 13L112 19L125 6" stroke="#20a464" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 4. Fork 2 -->
+  <g transform="translate(898 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path d="M92 77V130C92 142 101 151 113 151C125 151 134 142 134 130V77" stroke="#d9f5df" stroke-width="15" stroke-linecap="round"/>
+    <path d="M113 77V166" stroke="#d9f5df" stroke-width="15" stroke-linecap="round"/>
+    <path d="M134 87C143 75 160 76 167 88C175 102 165 114 151 124L131 139H169" stroke="#20a464" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">Fork 2</text>
+    <text class="note" x="125" y="260">name + eating tool</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path d="M7 5V13C7 16 9 18 12 18C15 18 17 16 17 13V5M12 5V22" stroke="#d9f5df" stroke-width="2.8" stroke-linecap="round"/>
+      <path d="M16 8C18 5 22 6 22 9C22 12 19 14 16 16H22" stroke="#20a464" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path d="M51 5V16C51 20 55 24 60 24C65 24 69 20 69 16V5M60 5V29" stroke="#d9f5df" stroke-width="4" stroke-linecap="round"/>
+      <path d="M68 8C71 4 77 5 78 9C80 14 75 17 70 20H79" stroke="#20a464" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path d="M104 4V18C104 23 109 28 116 28C123 28 128 23 128 18V4M116 4V35" stroke="#d9f5df" stroke-width="4.8" stroke-linecap="round"/>
+      <path d="M128 8C132 3 139 4 141 10C143 16 137 20 131 24H142" stroke="#20a464" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 5. Order Path -->
+  <g transform="translate(1172 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path d="M84 80H126C146 80 162 96 162 116C162 136 146 152 126 152H100" stroke="#d9f5df" stroke-width="16" stroke-linecap="round"/>
+    <path d="M95 98L78 115L95 132" stroke="#d9f5df" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M112 116L128 132L164 94" stroke="#20a464" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle class="mint" cx="84" cy="80" r="10"/>
+    <circle class="green" cx="126" cy="152" r="10"/>
+    <text class="label" x="125" y="230">Order Path</text>
+    <text class="note" x="125" y="260">from menu to decision</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path d="M7 7H14C19 7 22 10 22 14C22 18 19 21 14 21H9" stroke="#d9f5df" stroke-width="2.8" stroke-linecap="round"/>
+      <path d="M10 12L6 16L10 20" stroke="#d9f5df" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 14L13 17L20 10" stroke="#20a464" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path d="M53 7H63C70 7 75 12 75 17C75 23 70 27 63 27H55" stroke="#d9f5df" stroke-width="4" stroke-linecap="round"/>
+      <path d="M56 13L50 19L56 25" stroke="#d9f5df" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M56 17L60.5 21.5L70 11.5" stroke="#20a464" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path d="M107 7H120C128 7 134 13 134 20C134 27 128 33 120 33H109" stroke="#d9f5df" stroke-width="4.8" stroke-linecap="round"/>
+      <path d="M110 15L103 22L110 29" stroke="#d9f5df" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M110 20L116 26L128 13" stroke="#20a464" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <g transform="translate(100 580)">
+    <rect class="card" width="1300" height="280" rx="30"/>
+    <text x="650" y="54" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="950" fill="#1f2933">Why These Fit Better</text>
+    <text x="80" y="108" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="850" fill="#1f2933">Name fit</text>
+    <text x="80" y="138" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">The “2” becomes the central symbol: the answer, the route, or the eating choice.</text>
+    <text x="80" y="188" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="850" fill="#1f2933">Function fit</text>
+    <text x="80" y="218" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">They reference scan, menu decision, order path, or safe choice instead of just generic food.</text>
+    <text x="820" y="108" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="850" fill="#1f2933">Best direction</text>
+    <text x="820" y="146" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="950" fill="#20a464">Scan 2 Eat</text>
+    <text x="820" y="184" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">It connects the name and the core MVP action most clearly:</text>
+    <text x="820" y="214" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">scan a menu, get the thing to eat.</text>
+  </g>
+</svg>

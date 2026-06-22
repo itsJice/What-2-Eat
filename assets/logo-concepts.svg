@@ -1,0 +1,75 @@
+<svg width="1200" height="820" viewBox="0 0 1200 820" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">What 2 Eat logo concepts</title>
+  <desc id="desc">Five clean app icon logo directions for What 2 Eat: fork check, plate check, monogram bowl, scan frame, and map pin fork.</desc>
+  <rect width="1200" height="820" fill="#FBFAF6"/>
+  <style>
+    .label { font: 800 28px Inter, Arial, sans-serif; fill: #1f2933; text-anchor: middle; }
+    .sub { font: 600 17px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+    .card { fill: #fff; stroke: #dce3e8; stroke-width: 2; }
+    .bg { fill: #1f2933; }
+    .green { stroke: #20a464; }
+    .green-fill { fill: #20a464; }
+    .soft { fill: #d9f5df; }
+    .white { stroke: #fff; }
+    .white-fill { fill: #fff; }
+    .ink { stroke: #1f2933; }
+  </style>
+
+  <g transform="translate(55 64)">
+    <rect class="card" width="320" height="300" rx="28"/>
+    <rect class="bg" x="72" y="34" width="176" height="176" rx="42"/>
+    <path d="M128 80V151" class="green" stroke-width="16" stroke-linecap="round"/>
+    <path d="M106 80V134C106 149.464 118.536 162 134 162C149.464 162 162 149.464 162 134V80" class="green" stroke-width="16" stroke-linecap="round"/>
+    <path d="M134 162V190" class="green" stroke-width="16" stroke-linecap="round"/>
+    <path d="M156 141L181 166L216 116" class="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="160" y="248">Fork Check</text>
+    <text class="sub" x="160" y="276">Food + approved</text>
+  </g>
+
+  <g transform="translate(440 64)">
+    <rect class="card" width="320" height="300" rx="28"/>
+    <rect class="bg" x="72" y="34" width="176" height="176" rx="42"/>
+    <circle cx="160" cy="122" r="58" stroke="#d9f5df" stroke-width="16"/>
+    <circle cx="160" cy="122" r="33" stroke="#20a464" stroke-width="10"/>
+    <path d="M128 122L151 145L197 96" class="white" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="160" y="248">Plate Check</text>
+    <text class="sub" x="160" y="276">Safest, clearest read</text>
+  </g>
+
+  <g transform="translate(825 64)">
+    <rect class="card" width="320" height="300" rx="28"/>
+    <rect class="bg" x="72" y="34" width="176" height="176" rx="42"/>
+    <path d="M103 128C112 166 132 185 160 185C188 185 208 166 217 128" stroke="#20a464" stroke-width="18" stroke-linecap="round"/>
+    <path d="M111 124H209" stroke="#d9f5df" stroke-width="14" stroke-linecap="round"/>
+    <text x="160" y="119" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="950" fill="#fff">W2E</text>
+    <text class="label" x="160" y="248">Monogram Bowl</text>
+    <text class="sub" x="160" y="276">Most brandable</text>
+  </g>
+
+  <g transform="translate(247 440)">
+    <rect class="card" width="320" height="300" rx="28"/>
+    <rect class="bg" x="72" y="34" width="176" height="176" rx="42"/>
+    <path d="M116 85H98V103" class="green" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M204 85H222V103" class="green" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M116 159H98V141" class="green" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M204 159H222V141" class="green" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M137 96V144" class="white" stroke-width="13" stroke-linecap="round"/>
+    <path d="M122 96V134C122 144.493 130.507 153 141 153C151.493 153 160 144.493 160 134V96" class="white" stroke-width="13" stroke-linecap="round"/>
+    <path d="M141 153V176" class="white" stroke-width="13" stroke-linecap="round"/>
+    <path d="M171 129L188 146L213 112" class="green" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="160" y="248">Menu Scan</text>
+    <text class="sub" x="160" y="276">Main product action</text>
+  </g>
+
+  <g transform="translate(632 440)">
+    <rect class="card" width="320" height="300" rx="28"/>
+    <rect class="bg" x="72" y="34" width="176" height="176" rx="42"/>
+    <path d="M160 185C160 185 216 144 216 94C216 63.072 190.928 38 160 38C129.072 38 104 63.072 104 94C104 144 160 185 160 185Z" class="green-fill"/>
+    <circle cx="160" cy="94" r="36" class="soft"/>
+    <path d="M153 70V101" class="ink" stroke-width="9" stroke-linecap="round"/>
+    <path d="M142 70V94C142 101.18 147.82 107 155 107C162.18 107 168 101.18 168 94V70" class="ink" stroke-width="9" stroke-linecap="round"/>
+    <path d="M155 107V130" class="ink" stroke-width="9" stroke-linecap="round"/>
+    <text class="label" x="160" y="248">Pin Fork</text>
+    <text class="sub" x="160" y="276">Restaurant discovery</text>
+  </g>
+</svg>

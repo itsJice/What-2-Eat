@@ -1,0 +1,161 @@
+<svg width="1500" height="980" viewBox="0 0 1500 980" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">What 2 Eat 2E logo concepts</title>
+  <desc id="desc">Five clean 2E monogram logo icon concepts for What 2 Eat.</desc>
+  <rect width="1500" height="980" fill="#FBFAF6"/>
+  <style>
+    .card { fill: #fff; stroke: #dce3e8; stroke-width: 2; }
+    .bg { fill: #1f2933; }
+    .green { fill: #20a464; }
+    .mint { fill: #d9f5df; }
+    .ink { fill: #1f2933; }
+    .label { font: 900 28px Inter, Arial, sans-serif; fill: #1f2933; text-anchor: middle; }
+    .note { font: 650 17px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+    .tiny { font: 800 12px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+  </style>
+
+  <text x="750" y="58" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="950" fill="#1f2933">2E Monogram Directions</text>
+  <text x="750" y="91" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="650" fill="#65717f">A name-specific mark: compact enough for app icons, still tied to eating through shape, plate, scan, or check cues.</text>
+
+  <!-- 1. Split 2E -->
+  <g transform="translate(76 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path d="M78 80C87 62 107 55 129 61C149 66 157 84 150 101C146 113 135 122 121 131L96 147H153" stroke="#d9f5df" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M166 72H124V110H159M124 110V150H168" stroke="#20a464" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">Split 2E</text>
+    <text class="note" x="125" y="260">clearest monogram</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path d="M5 8C7 4 11 3 15 4C19 5 20 9 18 12L10 18H19" stroke="#d9f5df" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M20 6H12V12H19M12 12V19H21" stroke="#20a464" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path d="M51 7C54 1 60 0 65 2C70 4 72 9 68 14L56 22H70" stroke="#d9f5df" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M72 5H59V13H70M59 13V23H73" stroke="#20a464" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path d="M105 6C109 -1 117 -2 123 0C130 3 132 10 126 16L111 27H130" stroke="#d9f5df" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M132 3H116V14H129M116 14V27H133" stroke="#20a464" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 2. Plate 2E -->
+  <g transform="translate(350 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <circle class="mint" cx="125" cy="109" r="48"/>
+    <path d="M91 91C98 78 112 74 126 78C140 82 145 95 140 107C137 115 128 122 117 128L99 140H142" stroke="#1f2933" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M157 84H126V109H151M126 109V136H159" stroke="#20a464" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">Plate 2E</text>
+    <text class="note" x="125" y="260">brand + food context</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <circle class="mint" cx="12" cy="12" r="7.4"/>
+      <path d="M7 9C9 7 12 6 14 7C17 8 17 11 15 13L10 17H16" stroke="#1f2933" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M18 7H12V12H17M12 12V17H19" stroke="#20a464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <circle class="mint" cx="60" cy="12" r="10"/>
+      <path d="M52 8C55 4 60 3 64 5C68 7 69 11 66 14L58 20H67" stroke="#1f2933" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M70 5H60V12H68M60 12V20H71" stroke="#20a464" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <circle class="mint" cx="116" cy="12" r="12.5"/>
+      <path d="M107 7C111 2 117 1 122 3C127 6 128 11 124 15L113 23H125" stroke="#1f2933" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M129 3H116V12H126M116 12V23H130" stroke="#20a464" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 3. Check 2E -->
+  <g transform="translate(624 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path d="M82 82C91 64 112 57 132 63C152 69 159 87 151 104C146 115 136 123 123 131L98 147H154" stroke="#d9f5df" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M164 75H124V111H157M124 111V145H166" stroke="#d9f5df" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M90 123L109 142L155 94" stroke="#20a464" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">Check 2E</text>
+    <text class="note" x="125" y="260">name + compatibility</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path d="M6 8C8 4 12 3 16 4C20 5 21 9 18 12L10 18H19" stroke="#d9f5df" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M20 6H12V12H18M12 12V18H20" stroke="#d9f5df" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M7 14L10.5 17.5L18 9.5" stroke="#20a464" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path d="M52 7C55 1 62 0 67 3C72 6 72 11 67 15L56 22H70" stroke="#d9f5df" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M72 5H60V13H70M60 13V22H72" stroke="#d9f5df" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M52 16L57 21L69 8.5" stroke="#20a464" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path d="M106 6C110 -1 118 -2 124 0C131 3 132 10 126 16L111 27H130" stroke="#d9f5df" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M132 3H116V14H129M116 14V27H132" stroke="#d9f5df" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M106 19L113 26L128 10" stroke="#20a464" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 4. Scan 2E -->
+  <g transform="translate(898 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="green" d="M85 81H72V68H99V95H85V81ZM165 81H178V68H151V95H165V81ZM85 139H72V152H99V125H85V139ZM165 139H178V152H151V125H165V139Z"/>
+    <path d="M91 89C98 75 115 70 130 75C144 80 149 93 143 106C140 114 132 120 121 127L103 139H145" stroke="#d9f5df" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M158 84H129V109H153M129 109V136H160" stroke="#d9f5df" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">Scan 2E</text>
+    <text class="note" x="125" y="260">most functional</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path class="green" d="M6 7H3V4H9V10H6V7ZM18 7H21V4H15V10H18V7ZM6 17H3V20H9V14H6V17ZM18 17H21V20H15V14H18V17Z"/>
+      <path d="M7 9C9 6 13 5 16 7C18 9 18 12 15 14L10 17H17" stroke="#d9f5df" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M18 7H12V12H17M12 12V17H19" stroke="#d9f5df" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="green" d="M52 7H48V3H57V12H52V7ZM68 7H72V3H63V12H68V7ZM52 21H48V25H57V16H52V21ZM68 21H72V25H63V16H68V21Z"/>
+      <path d="M53 9C56 4 61 3 65 5C69 7 70 11 66 14L58 20H67" stroke="#d9f5df" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M70 6H60V13H68M60 13V20H71" stroke="#d9f5df" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="green" d="M106 6H101V1H112V12H106V6ZM126 6H131V1H120V12H126V6ZM106 26H101V31H112V20H106V26ZM126 26H131V31H120V20H126V26Z"/>
+      <path d="M108 8C111 2 118 1 123 3C128 6 129 11 124 15L113 23H126" stroke="#d9f5df" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M129 4H116V12H126M116 12V23H130" stroke="#d9f5df" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <!-- 5. Bowl 2E -->
+  <g transform="translate(1172 135)">
+    <rect class="card" width="250" height="360" rx="28"/>
+    <rect class="bg" x="50" y="34" width="150" height="150" rx="34"/>
+    <path class="mint" d="M77 116C83 150 101 168 125 168C149 168 167 150 173 116H77Z"/>
+    <path class="green" d="M85 94H165C173 94 180 101 180 109C180 117 173 124 165 124H85C77 124 70 117 70 109C70 101 77 94 85 94Z"/>
+    <path d="M88 79C97 62 116 57 135 62C153 67 159 83 152 99C148 109 139 116 127 124L105 139H154" stroke="#ffffff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M165 77H132V102H158M132 102V128H167" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="125" y="230">Bowl 2E</text>
+    <text class="note" x="125" y="260">warmest food-first mark</text>
+    <g transform="translate(57 295)">
+      <rect class="bg" width="24" height="24" rx="6"/>
+      <path class="mint" d="M4 13C5.5 21 9 24 12 24C15 24 18.5 21 20 13H4Z"/>
+      <rect class="green" x="4" y="10" width="16" height="6" rx="3"/>
+      <path d="M6 8C8 4 12 3 16 4C19 5 20 9 17 12L11 16H18" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M19 7H13V12H18M13 12V17H20" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="44" y="-4" width="32" height="32" rx="8"/>
+      <path class="mint" d="M49 15C51 25 55 30 60 30C65 30 69 25 71 15H49Z"/>
+      <rect class="green" x="49" y="10" width="22" height="8" rx="4"/>
+      <path d="M52 8C55 3 61 2 65 4C69 6 70 11 66 14L58 20H68" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M70 6H60V13H68M60 13V21H71" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="bg" x="96" y="-8" width="40" height="40" rx="9"/>
+      <path class="mint" d="M102 17C104 29 109 36 116 36C123 36 128 29 130 17H102Z"/>
+      <rect class="green" x="101" y="10" width="30" height="10" rx="5"/>
+      <path d="M106 8C110 1 118 0 123 3C128 6 129 12 124 16L113 25H127" stroke="#fff" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M130 4H116V13H127M116 13V25H131" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="tiny" x="72" y="50">24 / 32 / 40px</text>
+    </g>
+  </g>
+
+  <g transform="translate(100 580)">
+    <rect class="card" width="1300" height="280" rx="30"/>
+    <text x="650" y="54" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="950" fill="#1f2933">2E Works If We Keep It Bold</text>
+    <text x="80" y="112" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="850" fill="#1f2933">Why it is better</text>
+    <text x="80" y="142" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">It is ownable to the name. Plate/check/fork icons alone are too generic.</text>
+    <text x="80" y="192" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="850" fill="#1f2933">Risk</text>
+    <text x="80" y="222" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">If the E gets too detailed, it becomes hard to read below 32px.</text>
+    <text x="820" y="112" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="850" fill="#1f2933">Best directions</text>
+    <text x="820" y="150" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="950" fill="#20a464">Split 2E or Plate 2E</text>
+    <text x="820" y="188" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">Split 2E is the strongest brand mark.</text>
+    <text x="820" y="218" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">Plate 2E adds the clearest food context.</text>
+  </g>
+</svg>

@@ -1,0 +1,145 @@
+<svg width="1400" height="920" viewBox="0 0 1400 920" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Clean What 2 Eat logo icon concepts</title>
+  <desc id="desc">Five clean logo icon concepts for What 2 Eat, designed to remain identifiable at app icon and favicon sizes.</desc>
+  <rect width="1400" height="920" fill="#FBFAF6"/>
+  <style>
+    .card { fill: #fff; stroke: #dce3e8; stroke-width: 2; }
+    .tile { fill: #1f2933; }
+    .green { fill: #20a464; }
+    .green-stroke { stroke: #20a464; }
+    .soft { fill: #d9f5df; }
+    .ink { fill: #1f2933; }
+    .white { fill: #fff; }
+    .label { font: 850 30px Inter, Arial, sans-serif; fill: #1f2933; text-anchor: middle; }
+    .caption { font: 600 18px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+    .micro { font: 800 13px Inter, Arial, sans-serif; fill: #65717f; text-anchor: middle; }
+  </style>
+
+  <text x="700" y="58" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="900" fill="#1f2933">What 2 Eat Logo Icon Concepts</text>
+  <text x="700" y="88" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="650" fill="#65717f">Bold silhouettes only. Designed to survive app-icon and favicon sizes.</text>
+
+  <!-- 1. Plate Check -->
+  <g transform="translate(70 138)">
+    <rect class="card" width="240" height="318" rx="26"/>
+    <rect class="tile" x="45" y="30" width="150" height="150" rx="34"/>
+    <circle cx="120" cy="105" r="45" class="soft"/>
+    <circle cx="120" cy="105" r="24" class="tile"/>
+    <path d="M92 103L111 122L150 82" stroke="#20a464" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="120" y="226">Plate Check</text>
+    <text class="caption" x="120" y="254">safe choice</text>
+    <g transform="translate(57 278)">
+      <rect class="tile" width="28" height="28" rx="7"/>
+      <circle cx="14" cy="14" r="8.5" class="soft"/>
+      <path d="M9 14L12.5 17.5L20 10" stroke="#20a464" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="tile" x="52" y="-6" width="40" height="40" rx="9"/>
+      <circle cx="72" cy="14" r="12" class="soft"/>
+      <path d="M65 14L70 19L80 9" stroke="#20a464" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="micro" x="118" y="17">28px / 40px</text>
+    </g>
+  </g>
+
+  <!-- 2. Fork Shield -->
+  <g transform="translate(330 138)">
+    <rect class="card" width="240" height="318" rx="26"/>
+    <rect class="tile" x="45" y="30" width="150" height="150" rx="34"/>
+    <path class="green" d="M120 49L171 70V107C171 143 147 168 120 176C93 168 69 143 69 107V70L120 49Z"/>
+    <path d="M118 77V119" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+    <path d="M97 77V109C97 122 107 132 120 132C133 132 143 122 143 109V77" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+    <path d="M120 132V153" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+    <text class="label" x="120" y="226">Fork Shield</text>
+    <text class="caption" x="120" y="254">protected eating</text>
+    <g transform="translate(57 278)">
+      <rect class="tile" width="28" height="28" rx="7"/>
+      <path class="green" d="M14 4L24 8V15C24 22 20 26 14 28C8 26 4 22 4 15V8L14 4Z"/>
+      <path d="M14 9V16M10 9V14C10 17 12 19 14 19C16 19 18 17 18 14V9M14 19V24" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>
+      <rect class="tile" x="52" y="-6" width="40" height="40" rx="9"/>
+      <path class="green" d="M72 0L86 6V17C86 27 80 34 72 37C64 34 58 27 58 17V6L72 0Z"/>
+      <path d="M72 8V19M66 8V16C66 20 68.8 23 72 23C75.2 23 78 20 78 16V8M72 23V31" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <text class="micro" x="118" y="17">28px / 40px</text>
+    </g>
+  </g>
+
+  <!-- 3. Scan Plate -->
+  <g transform="translate(590 138)">
+    <rect class="card" width="240" height="318" rx="26"/>
+    <rect class="tile" x="45" y="30" width="150" height="150" rx="34"/>
+    <path d="M82 78H66V94" stroke="#20a464" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M158 78H174V94" stroke="#20a464" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M82 154H66V138" stroke="#20a464" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M158 154H174V138" stroke="#20a464" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="120" cy="116" r="31" class="soft"/>
+    <path d="M101 116L114 129L141 101" stroke="#1f2933" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="120" y="226">Scan Plate</text>
+    <text class="caption" x="120" y="254">menu analysis</text>
+    <g transform="translate(57 278)">
+      <rect class="tile" width="28" height="28" rx="7"/>
+      <path d="M8 8H4V12M20 8H24V12M8 20H4V16M20 20H24V16" stroke="#20a464" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="14" cy="14" r="5.5" class="soft"/>
+      <path d="M11 14L13 16L18 11" stroke="#1f2933" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="tile" x="52" y="-6" width="40" height="40" rx="9"/>
+      <path d="M64 6H58V12M80 6H86V12M64 22H58V16M80 22H86V16" stroke="#20a464" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="72" cy="14" r="8" class="soft"/>
+      <path d="M68 14L71 17L78 10" stroke="#1f2933" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="micro" x="118" y="17">28px / 40px</text>
+    </g>
+  </g>
+
+  <!-- 4. Pin Plate -->
+  <g transform="translate(850 138)">
+    <rect class="card" width="240" height="318" rx="26"/>
+    <rect class="tile" x="45" y="30" width="150" height="150" rx="34"/>
+    <path class="green" d="M120 174C120 174 168 139 168 96C168 69.49 146.51 48 120 48C93.49 48 72 69.49 72 96C72 139 120 174 120 174Z"/>
+    <circle cx="120" cy="95" r="29" class="soft"/>
+    <circle cx="120" cy="95" r="13" class="tile"/>
+    <text class="label" x="120" y="226">Pin Plate</text>
+    <text class="caption" x="120" y="254">find nearby food</text>
+    <g transform="translate(57 278)">
+      <rect class="tile" width="28" height="28" rx="7"/>
+      <path class="green" d="M14 27S24 20 24 11C24 5.5 19.5 1 14 1C8.5 1 4 5.5 4 11C4 20 14 27 14 27Z"/>
+      <circle cx="14" cy="11" r="5.5" class="soft"/>
+      <circle cx="14" cy="11" r="2.3" class="tile"/>
+      <rect class="tile" x="52" y="-6" width="40" height="40" rx="9"/>
+      <path class="green" d="M72 34S86 24 86 12C86 4 80 -2 72 -2C64 -2 58 4 58 12C58 24 72 34 72 34Z"/>
+      <circle cx="72" cy="12" r="8" class="soft"/>
+      <circle cx="72" cy="12" r="3.5" class="tile"/>
+      <text class="micro" x="118" y="17">28px / 40px</text>
+    </g>
+  </g>
+
+  <!-- 5. Bowl Check -->
+  <g transform="translate(1110 138)">
+    <rect class="card" width="240" height="318" rx="26"/>
+    <rect class="tile" x="45" y="30" width="150" height="150" rx="34"/>
+    <path class="soft" d="M70 101H170C165 143 145 165 120 165C95 165 75 143 70 101Z"/>
+    <path class="green" d="M82 93H158C166 93 172 99 172 107C172 115 166 121 158 121H82C74 121 68 115 68 107C68 99 74 93 82 93Z"/>
+    <path d="M94 119L112 137L149 98" stroke="#1f2933" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="label" x="120" y="226">Bowl Check</text>
+    <text class="caption" x="120" y="254">good order found</text>
+    <g transform="translate(57 278)">
+      <rect class="tile" width="28" height="28" rx="7"/>
+      <path class="soft" d="M5 12H23C22 22 18 26 14 26C10 26 6 22 5 12Z"/>
+      <rect class="green" x="4" y="10" width="20" height="6" rx="3"/>
+      <path d="M9 15L13 19L20 11" stroke="#1f2933" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect class="tile" x="52" y="-6" width="40" height="40" rx="9"/>
+      <path class="soft" d="M59 12H85C83.5 27 78 34 72 34C66 34 60.5 27 59 12Z"/>
+      <rect class="green" x="58" y="9" width="28" height="8" rx="4"/>
+      <path d="M65 16L70 21L80 10" stroke="#1f2933" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="micro" x="118" y="17">28px / 40px</text>
+    </g>
+  </g>
+
+  <g transform="translate(125 555)">
+    <rect width="1150" height="250" rx="28" fill="#ffffff" stroke="#dce3e8" stroke-width="2"/>
+    <text x="575" y="55" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="900" fill="#1f2933">Quick Read</text>
+    <text x="80" y="105" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800" fill="#1f2933">1. Plate Check</text>
+    <text x="80" y="135" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">Clearest universal signal. Best favicon.</text>
+    <text x="80" y="180" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800" fill="#1f2933">2. Fork Shield</text>
+    <text x="80" y="210" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">Strongest dietary-restriction meaning.</text>
+    <text x="425" y="105" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800" fill="#1f2933">3. Scan Plate</text>
+    <text x="425" y="135" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">Best match for menu scanning.</text>
+    <text x="425" y="180" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800" fill="#1f2933">4. Pin Plate</text>
+    <text x="425" y="210" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">Good if restaurant discovery is central.</text>
+    <text x="790" y="105" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800" fill="#1f2933">5. Bowl Check</text>
+    <text x="790" y="135" font-family="Inter, Arial, sans-serif" font-size="18" fill="#65717f">Friendly and food-first, still simple.</text>
+  </g>
+</svg>

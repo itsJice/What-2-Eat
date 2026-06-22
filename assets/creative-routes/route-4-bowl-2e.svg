@@ -1,0 +1,10 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="96" fill="#FBFAF6"/>
+  <rect x="210" y="120" width="480" height="480" rx="108" fill="#1F2933"/>
+  <path d="M295 385C316 498 372 558 450 558C528 558 584 498 605 385H295Z" fill="#D9F5DF"/>
+  <rect x="275" y="322" width="350" height="92" rx="46" fill="#20A464"/>
+  <path d="M323 276C350 224 408 209 466 226C521 242 540 292 520 337C508 365 480 388 443 411L381 450H533" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M570 269H456V345H544M456 345V430H579" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="450" y="705" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="950" fill="#1F2933">Bowl 2E</text>
+  <text x="450" y="756" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="650" fill="#65717F">Warm, food-first brand mark</text>
+</svg>

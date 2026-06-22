@@ -1,0 +1,10 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="96" fill="#FBFAF6"/>
+  <rect x="210" y="120" width="480" height="480" rx="108" fill="#1F2933"/>
+  <circle cx="450" cy="360" r="154" fill="#D9F5DF"/>
+  <circle cx="450" cy="360" r="98" fill="#FBFAF6"/>
+  <path d="M338 312C360 268 412 252 458 265C502 278 521 318 503 357C492 381 465 400 431 420L375 456H512" stroke="#1F2933" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M562 290H444V360H536M444 360V435H572" stroke="#20A464" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="450" y="705" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="950" fill="#1F2933">Plate 2E</text>
+  <text x="450" y="756" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="650" fill="#65717F">Name cue with food context</text>
+</svg>
