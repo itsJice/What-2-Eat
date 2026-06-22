@@ -317,6 +317,8 @@ const state = {
   savedMeals: [],
   savedOrders: [],
   scanPhotos: [],
+  scanFiles: [],
+  scanInputs: [],
   scanMeals: [],
   scanSections: [],
   scanOrder: [],
@@ -359,6 +361,7 @@ const cameraFallback = document.querySelector("#cameraFallback");
 const photoCount = document.querySelector("#photoCount");
 const photoThumbs = document.querySelector("#photoThumbs");
 const nextFromCamera = document.querySelector("#nextFromCamera");
+const flashToggle = document.querySelector("#flashToggle");
 const scannerStatus = document.querySelector("#scannerStatus");
 const scanVerdictPrimary = document.querySelector("#scanVerdictPrimary");
 const scanVerdictSecondary = document.querySelector("#scanVerdictSecondary");
@@ -374,6 +377,9 @@ const productBarcode = document.querySelector("#productBarcode");
 const productResult = document.querySelector("#productResult");
 const productCameraWrap = document.querySelector("#productCameraWrap");
 const productCameraPreview = document.querySelector("#productCameraPreview");
+const productCameraEmpty = document.querySelector("#productCameraEmpty");
+const productCameraToggle = document.querySelector("#toggleProductCamera");
+const startProductScannerButton = document.querySelector("#startProductScanner");
 const appShell = document.querySelector(".app-shell");
 const mainContent = document.querySelector(".main-content");
 
@@ -576,9 +582,19 @@ const menuSectionHeaders = new Set([
 ]);
 
 const menuKeywordGroups = {
-  dairy: ["milk", "cheese", "cream", "butter", "yogurt", "alfredo", "parm", "parmesan", "ranch"],
+  dairy: ["milk", "cheese", "cream", "butter", "yogurt", "alfredo", "parm", "parmesan", "ranch", "whey", "casein", "lactose"],
   gluten: [
+    "gluten",
     "wheat",
+    "wheat flour",
+    "whole wheat",
+    "durum",
+    "semolina",
+    "barley",
+    "rye",
+    "malt",
+    "farro",
+    "couscous",
     "bread",
     "bun",
     "pita",
@@ -606,7 +622,7 @@ const menuKeywordGroups = {
   shellfish: ["shrimp", "lobster", "crab", "prawn", "clam", "mussel", "oyster"],
   fish: ["salmon", "tuna", "cod", "tilapia", "fish"],
   eggs: ["egg", "omelet", "omelette", "mayo", "mayonnaise", "aioli"],
-  soy: ["soy", "tofu", "edamame", "miso", "teriyaki"],
+  soy: ["soy", "soya", "soybean", "soybeans", "soy lecithin", "soybean oil", "soy protein", "tofu", "edamame", "miso", "teriyaki", "tamari"],
   sesame: ["sesame", "tahini"],
   pork: ["pork", "bacon", "ham", "prosciutto", "pepperoni", "sausage"],
   beef: ["beef", "steak", "burger", "hamburger", "meatball", "meatloaf"],
@@ -2141,6 +2157,7 @@ function setView(viewId, options = {}) {
 
   if (viewId === "product-scan") {
     renderProductResult();
+    startProductBarcodeScanner({ showFallbackToast: false });
   }
 }
 
@@ -2960,6 +2977,51 @@ function numberFact(value, suffix = "") {
   return `${Math.round(numeric * 10) / 10}${suffix}`;
 }
 
+function normalizeProductText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/en:/g, " ")
+    .replace(/[-_/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stripProductFreeClaims(text) {
+  const freeTerms = [
+    "gluten",
+    "wheat",
+    "dairy",
+    "milk",
+    "lactose",
+    "soy",
+    "soya",
+    "soybean",
+    "peanut",
+    "tree nut",
+    "nut",
+    "egg",
+    "sesame",
+    "fish",
+    "shellfish",
+    "pork",
+    "beef",
+    "chicken",
+    "alcohol",
+    "caffeine",
+    "corn",
+    "coconut",
+  ];
+  const escaped = freeTerms
+    .sort((a, b) => b.length - a.length)
+    .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  return text
+    .replace(new RegExp(`\\b(?:${escaped})\\s+free\\b`, "g"), " ")
+    .replace(new RegExp(`\\bfree\\s+from\\s+(?:${escaped})\\b`, "g"), " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function productText(product) {
   return [
     product?.name,
@@ -2975,35 +3037,277 @@ function productText(product) {
     .replace(/en:/g, " ");
 }
 
+function expandedKeywordsForProduct(item) {
+  return uniqueList(
+    keywordsForAvoidItem(item)
+      .flatMap((keyword) => menuKeywordGroups[keyword] || [keyword])
+      .map((keyword) => normalizeProductText(keyword))
+      .filter(Boolean),
+  );
+}
+
+function productEvidenceParts(product) {
+  return {
+    ingredients: stripProductFreeClaims(normalizeProductText(product?.ingredientsText)),
+    allergens: stripProductFreeClaims(normalizeProductText((product?.allergens || []).map(formatProductTag).join(" "))),
+    traces: stripProductFreeClaims(normalizeProductText((product?.traces || []).map(formatProductTag).join(" "))),
+    categories: stripProductFreeClaims(normalizeProductText((product?.categories || []).map(formatProductTag).join(" "))),
+  };
+}
+
+function keywordHits(text, keywords) {
+  return uniqueList(keywords.filter((keyword) => keyword && textHasKeyword(text, [keyword]))).slice(0, 4);
+}
+
+function sourceSummary(matches) {
+  return matches
+    .map(({ source, hits }) => `${source}${hits.length ? ` (${hits.join(", ")})` : ""}`)
+    .join(", ");
+}
+
+function productRestrictionMatch(product, label, options = {}) {
+  const evidence = productEvidenceParts(product);
+  const keywords = expandedKeywordsForProduct(label);
+  if (!keywords.length) return null;
+
+  const directSources = [
+    { source: "allergens", hits: keywordHits(evidence.allergens, keywords) },
+    { source: "ingredients", hits: keywordHits(evidence.ingredients, keywords) },
+  ].filter((match) => match.hits.length);
+  const categoryHits = keywordHits(evidence.categories, keywords);
+  const traceHits = keywordHits(evidence.traces, keywords);
+
+  if (!directSources.length && !traceHits.length && !categoryHits.length) return null;
+
+  const displayLabel = options.displayLabel || label;
+  if (directSources.length) {
+    return {
+      severity: "hard",
+      message: `${displayLabel}: listed in ${sourceSummary(directSources)}.`,
+    };
+  }
+
+  return {
+    severity: "trace",
+    message: traceHits.length
+      ? `${displayLabel}: listed as a trace/contact risk (${traceHits.join(", ")}).`
+      : `${displayLabel}: category data mentions ${categoryHits.join(", ")}. Check the package label.`,
+  };
+}
+
 function productConflictReasons(product) {
-  const text = productText(product);
-  const reasons = [];
+  const reasons = { hard: [], trace: [] };
   state.profile.avoidFoods.forEach((food) => {
-    const keywords = keywordsForAvoidItem(food);
-    if (textHasKeyword(text, keywords)) {
-      reasons.push(`${food} appears in the ingredients, allergens, traces, labels, or categories.`);
+    const match = productRestrictionMatch(product, food);
+    if (match?.severity === "hard") {
+      reasons.hard.push(match.message);
+    } else if (match?.severity === "trace") {
+      reasons.trace.push(match.message);
     }
   });
 
   state.profile.eatingStyle.forEach((style) => {
-    const keywords = keywordsForAvoidItem(style);
-    if (keywords.length && textHasKeyword(text, keywords)) {
-      reasons.push(`${style} may not fit because the product data points to ${keywords.slice(0, 2).join(" or ")}.`);
+    const match = productRestrictionMatch(product, style, { displayLabel: `${style} style` });
+    if (match?.severity === "hard") {
+      reasons.hard.push(match.message);
+    } else if (match?.severity === "trace") {
+      reasons.trace.push(match.message);
     }
   });
 
+  const text = productText(product);
   if (state.profile.healthNeeds.includes("No Fried Foods") && textHasKeyword(text, menuKeywordGroups.fried)) {
-    reasons.push("This may be fried or breaded.");
+    reasons.hard.push("No Fried Foods: product data points to fried, crispy, breaded, or tempura.");
   }
 
-  return uniqueList(reasons);
+  return {
+    hard: uniqueList(reasons.hard),
+    trace: uniqueList(reasons.trace),
+  };
+}
+
+function nutriScoreExplanation(score) {
+  const grade = String(score || "").toUpperCase();
+  const notes = {
+    A: "Exceptional nutritional quality; encourages consumption.",
+    B: "Good nutritional quality.",
+    C: "Average nutritional quality; to be consumed in moderation.",
+    D: "Lower nutritional quality; to be consumed less frequently or in small portions.",
+    E: "Poor nutritional quality; limit consumption.",
+  };
+  return notes[grade] || "A to E score for overall nutritional quality. A is strongest; E is weakest.";
+}
+
+function novaExplanation(group) {
+  const nova = Number(group);
+  const notes = {
+    1: "Unprocessed or minimally processed food.",
+    2: "Processed cooking ingredient, like oil, sugar, salt, or starch.",
+    3: "Processed food made by adding ingredients to a simpler food.",
+    4: "Ultra-processed. Usually more industrial ingredients and additives.",
+  };
+  return notes[nova] || "Processing scale from 1 to 4. Lower is closer to whole food; 4 is ultra-processed.";
+}
+
+function sugarLevel(value) {
+  const sugar = Number(value);
+  if (Number.isNaN(sugar)) return { label: "Unknown", tone: "neutral", note: "Total sugar per 100g is not listed." };
+  if (sugar <= 5) {
+    return { label: "Low", tone: "good", note: "Low sugar: 5g or less total sugar per 100g." };
+  }
+  if (sugar > 22.5) {
+    return { label: "High", tone: "watch", note: "High sugar: over 22.5g total sugar per 100g." };
+  }
+  return { label: "Medium", tone: "neutral", note: "Middle range: above 5g and up to 22.5g total sugar per 100g." };
+}
+
+function proteinExplanation(value) {
+  const protein = Number(value);
+  if (Number.isNaN(protein)) return "Protein per 100g is not listed.";
+  if (protein >= 10) return "Strong protein signal for this app's high-protein goal.";
+  if (protein >= 5) return "Some protein, but not a high-protein product.";
+  return "Low protein. Not a meaningful protein source.";
+}
+
+function nutriScoreImagePath(score) {
+  const grade = String(score || "").toLowerCase();
+  if (!["a", "b", "c", "d", "e"].includes(grade)) return null;
+  return `assets/nutri-score-${grade}.png`;
+}
+
+function productMetricFacts(product) {
+  const nutriments = product?.nutriments || {};
+  const sugar = sugarLevel(nutriments.sugars100g);
+  return [
+    {
+      label: "Nutri-Score",
+      value: product?.nutriScore ? product.nutriScore.toUpperCase() : "Unknown",
+      note: nutriScoreExplanation(product?.nutriScore),
+      tone: ["A", "B"].includes(String(product?.nutriScore || "").toUpperCase()) ? "good" : ["D", "E"].includes(String(product?.nutriScore || "").toUpperCase()) ? "watch" : "neutral",
+      image: nutriScoreImagePath(product?.nutriScore),
+    },
+    {
+      label: "NOVA",
+      value: product?.novaGroup ? `Group ${product.novaGroup}` : "Unknown",
+      note: novaExplanation(product?.novaGroup),
+      tone: Number(product?.novaGroup) >= 4 ? "watch" : Number(product?.novaGroup) <= 1 ? "good" : "neutral",
+    },
+    {
+      label: "Sugar",
+      value: numberFact(nutriments.sugars100g, "g"),
+      note: `${sugar.label}. ${sugar.note}`,
+      tone: sugar.tone,
+    },
+    {
+      label: "Protein",
+      value: numberFact(nutriments.proteins100g, "g"),
+      note: proteinExplanation(nutriments.proteins100g),
+      tone: Number(nutriments.proteins100g) >= 10 ? "good" : "neutral",
+    },
+  ];
+}
+
+function productNutritionSummary(product) {
+  const nutriments = product?.nutriments || {};
+  return [
+    `Nutri-Score: ${product?.nutriScore ? product.nutriScore.toUpperCase() : "Unknown"}`,
+    `NOVA: ${product?.novaGroup ? `Group ${product.novaGroup}` : "Unknown"}`,
+    `Sugar: ${numberFact(nutriments.sugars100g, "g")} per 100g`,
+    `Protein: ${numberFact(nutriments.proteins100g, "g")} per 100g`,
+  ];
+}
+
+function showNutritionInfo() {
+  const shell = document.querySelector(".app-shell");
+  const product = state.productLookup?.product;
+  if (!shell || !product) return;
+
+  shell.querySelector(".order-review-sheet")?.remove();
+  const sheet = document.createElement("div");
+  sheet.className = "order-review-sheet nutrition-info-sheet";
+  sheet.innerHTML = `
+    <div class="order-review-card nutrition-info-card" role="dialog" aria-modal="true" aria-label="Nutrition score guide">
+      <button class="icon-button order-review-close" data-close-order-review type="button" aria-label="Close nutrition guide">
+        ${renderActionIcon("remove")}
+      </button>
+      <p class="eyebrow">Nutrition guide</p>
+      <h2>What these mean</h2>
+      <div class="nutrition-current">
+        <strong>This product</strong>
+        <ul>${productNutritionSummary(product).map((item) => `<li>${item}</li>`).join("")}</ul>
+      </div>
+      <div class="nutrition-guide-list">
+        <section>
+          <h3>Nutri-Score</h3>
+          <div class="nutri-guide-comparison">
+            <div class="nutri-guide-scale" aria-label="Nutri-Score scale from A to E">
+              <strong>Nutri-Score</strong>
+              <div class="nutri-guide-letters">
+                <span class="grade-a">A</span>
+                <span class="grade-b">B</span>
+                <span class="grade-c">C</span>
+                <span class="grade-d">D</span>
+                <span class="grade-e">E</span>
+              </div>
+              <div class="nutri-guide-axis">
+                <span>Better nutrition quality</span>
+                <span>Limit more often</span>
+              </div>
+            </div>
+            <table class="nutri-grade-table">
+              <thead>
+                <tr>
+                  <th>Grade</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>A</td><td>Exceptional nutritional quality; encourages consumption.</td></tr>
+                <tr><td>B</td><td>Good nutritional quality.</td></tr>
+                <tr><td>C</td><td>Average nutritional quality; to be consumed in moderation.</td></tr>
+                <tr><td>D</td><td>Lower nutritional quality; to be consumed less frequently or in small portions.</td></tr>
+                <tr><td>E</td><td>Poor nutritional quality; limit consumption.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section>
+          <h3>NOVA</h3>
+          <p>A processing scale. It does not replace ingredients or allergen checks.</p>
+          <ul>
+            <li><strong>Group 1:</strong> unprocessed or minimally processed.</li>
+            <li><strong>Group 2:</strong> cooking ingredients like oil, sugar, or salt.</li>
+            <li><strong>Group 3:</strong> processed foods made from simpler foods.</li>
+            <li><strong>Group 4:</strong> ultra-processed foods with more industrial ingredients or additives.</li>
+          </ul>
+        </section>
+        <section>
+          <h3>Sugar</h3>
+          <p>Open Food Facts usually gives total sugar per 100g. Low is 5g or less per 100g; high is over 22.5g per 100g. For added sugar, the FDA Daily Value is 50g per day on a 2,000 calorie diet.</p>
+        </section>
+        <section>
+          <h3>Protein</h3>
+          <p>For quick shopping, this app treats 10g+ per 100g as a strong protein signal, 5-10g as some protein, and under 5g as low. Personal protein needs vary, so this is a product comparison guide.</p>
+        </section>
+      </div>
+    </div>
+  `;
+  shell.appendChild(sheet);
+  window.setTimeout(() => sheet.classList.add("show"), 20);
 }
 
 function productGoalNotes(product) {
   const nutriments = product?.nutriments || {};
   const notes = [];
-  if (state.profile.healthNeeds.includes("Low Sugar") && Number(nutriments.sugars100g) > 8) {
-    notes.push(`Sugar is ${numberFact(nutriments.sugars100g, "g")} per 100g.`);
+  const sugar = sugarLevel(nutriments.sugars100g);
+  const nutriScore = String(product?.nutriScore || "").toUpperCase();
+  if (["D", "E"].includes(nutriScore)) {
+    notes.push(`Nutri-Score ${nutriScore}: less favorable overall nutrition score.`);
+  }
+  if (sugar.tone === "watch") {
+    notes.push(`Sugar is high at ${numberFact(nutriments.sugars100g, "g")} per 100g.`);
+  } else if (state.profile.healthNeeds.includes("Low Sugar") && Number(nutriments.sugars100g) > 5) {
+    notes.push(`Low Sugar goal: this is not low sugar at ${numberFact(nutriments.sugars100g, "g")} per 100g.`);
   }
   if (state.profile.healthNeeds.includes("Low Sodium") && Number(nutriments.salt100g) > 0.7) {
     notes.push(`Salt is ${numberFact(nutriments.salt100g, "g")} per 100g.`);
@@ -3011,11 +3315,11 @@ function productGoalNotes(product) {
   if ((state.profile.healthNeeds.includes("Low Carb") || state.profile.healthNeeds.includes("Diabetic-Friendly")) && Number(nutriments.carbohydrates100g) > 20) {
     notes.push(`Carbs are ${numberFact(nutriments.carbohydrates100g, "g")} per 100g.`);
   }
-  if (state.profile.healthNeeds.includes("High Protein") && Number(nutriments.proteins100g) >= 10) {
-    notes.push(`Protein is ${numberFact(nutriments.proteins100g, "g")} per 100g.`);
+  if (state.profile.healthNeeds.includes("High Protein") && Number(nutriments.proteins100g) < 10) {
+    notes.push(`High Protein goal: protein is only ${numberFact(nutriments.proteins100g, "g")} per 100g.`);
   }
   if (product?.novaGroup && Number(product.novaGroup) >= 4) {
-    notes.push("Open Food Facts marks this as NOVA 4, usually ultra-processed.");
+    notes.push("NOVA 4: Open Food Facts marks this as ultra-processed.");
   }
   return uniqueList(notes);
 }
@@ -3023,12 +3327,23 @@ function productGoalNotes(product) {
 function productVerdict(product) {
   const conflicts = productConflictReasons(product);
   const notes = productGoalNotes(product);
-  if (conflicts.length) {
+  if (conflicts.hard.length) {
     return {
       category: "avoid",
-      label: "Likely not a fit",
-      summary: "This product conflicts with your Dine DNA based on Open Food Facts data.",
-      conflicts,
+      label: "Doesn't fit your Dine DNA",
+      summary: "Open Food Facts lists an ingredient, allergen, or category that conflicts with your saved profile.",
+      conflicts: conflicts.hard,
+      traceConflicts: conflicts.trace,
+      notes,
+    };
+  }
+  if (conflicts.trace.length) {
+    return {
+      category: "modify",
+      label: "Ask before eating",
+      summary: "No direct ingredient conflict found, but Open Food Facts lists a trace/contact risk for your profile.",
+      conflicts: [],
+      traceConflicts: conflicts.trace,
       notes,
     };
   }
@@ -3040,6 +3355,7 @@ function productVerdict(product) {
         ? "No direct ingredient conflict found, but a nutrition or processing detail is worth checking."
         : "Open Food Facts does not have full ingredients for this product yet.",
       conflicts: [],
+      traceConflicts: [],
       notes,
     };
   }
@@ -3048,8 +3364,19 @@ function productVerdict(product) {
     label: "Looks compatible",
     summary: "No direct conflict found against your current Dine DNA.",
     conflicts: [],
+    traceConflicts: [],
     notes,
   };
+}
+
+function productDineDnaNotes(verdict) {
+  if (verdict.conflicts?.length) return verdict.conflicts;
+  if (verdict.traceConflicts?.length) return verdict.traceConflicts;
+  const activeDna = uniqueList([...state.profile.avoidFoods, ...state.profile.eatingStyle]);
+  if (!activeDna.length) {
+    return ["No restrictions selected yet. Add your Dine DNA in Profile for a personal yes/no check."];
+  }
+  return [`No direct ingredient or allergen conflict found for ${activeDna.slice(0, 4).join(", ")}${activeDna.length > 4 ? ", and more" : ""}.`];
 }
 
 function renderProductLookupLoading(barcode) {
@@ -3088,14 +3415,8 @@ function renderProductResult() {
 
   const product = lookup.product;
   const verdict = productVerdict(product);
-  const nutriments = product.nutriments || {};
   const allergens = [...(product.allergens || []), ...(product.traces || [])].map(formatProductTag);
-  const facts = [
-    ["Nutri-Score", product.nutriScore ? product.nutriScore.toUpperCase() : "Unknown"],
-    ["NOVA", product.novaGroup ? `Group ${product.novaGroup}` : "Unknown"],
-    ["Sugar", numberFact(nutriments.sugars100g, "g")],
-    ["Protein", numberFact(nutriments.proteins100g, "g")],
-  ];
+  const facts = productMetricFacts(product);
 
   productResult.innerHTML = `
     <article class="product-card">
@@ -3108,10 +3429,22 @@ function renderProductResult() {
       </div>
       <span class="status-pill ${statusClass(verdict.category)}">${verdict.label}</span>
       <p>${verdict.summary}</p>
-      <div class="product-facts">
-        ${facts.map(([label, value]) => `<div class="product-fact"><strong>${label}</strong><span>${value}</span></div>`).join("")}
+      <div class="product-facts-panel">
+        <button class="nutrition-info-button" data-nutrition-info type="button" aria-label="Explain nutrition scores">i</button>
+        <div class="product-facts">
+          ${facts
+            .map(
+              ({ label, value, tone, image }) => `
+                <div class="product-fact product-fact-${tone}${image ? " product-fact-score" : ""}">
+                  <strong>${label}</strong>
+                  ${image ? `<img class="nutri-score-badge" src="${image}" alt="${label} ${value}" loading="lazy" />` : `<span>${value}</span>`}
+                </div>
+              `,
+            )
+            .join("")}
+        </div>
       </div>
-      ${instructionBlock("Dine DNA conflicts", verdict.conflicts)}
+      ${instructionBlock("Dine DNA check", productDineDnaNotes(verdict))}
       ${instructionBlock("Nutrition notes", verdict.notes)}
       ${instructionBlock("Allergens and traces", allergens.length ? allergens : ["None listed in Open Food Facts."])}
       <div class="ingredient-list">
@@ -3161,46 +3494,89 @@ function stopProductBarcodeScanner() {
   }
   if (productCameraPreview) productCameraPreview.srcObject = null;
   productCameraWrap?.classList.remove("active");
+  updateProductCameraControls(false);
 }
 
-async function startProductBarcodeScanner() {
-  if (!("BarcodeDetector" in window)) {
-    showActionToast("Type the barcode instead", "copy");
-    productBarcode?.focus();
+function updateProductCameraControls(isActive) {
+  productCameraWrap?.classList.toggle("active", isActive);
+  productCameraToggle?.classList.toggle("active", isActive);
+  productCameraToggle?.setAttribute("aria-pressed", String(isActive));
+  productCameraToggle?.setAttribute("aria-label", isActive ? "Turn camera off" : "Turn camera on");
+  if (startProductScannerButton) {
+    startProductScannerButton.textContent = isActive ? "Camera off" : "Camera on";
+    startProductScannerButton.setAttribute("aria-pressed", String(isActive));
+  }
+  const emptyLabel = productCameraEmpty?.querySelector("span");
+  if (emptyLabel) emptyLabel.textContent = isActive ? "Barcode scanner" : "Camera off";
+}
+
+function startProductDetectorLoop(detector) {
+  const scanFrame = async () => {
+    if (!state.productScanActive) return;
+    try {
+      const codes = await detector.detect(productCameraPreview);
+      const barcode = codes[0]?.rawValue?.replace(/\D/g, "");
+      if (barcode) {
+        productBarcode.value = barcode;
+        stopProductBarcodeScanner();
+        lookupOpenFoodFactsProduct(barcode);
+        return;
+      }
+    } catch {
+      // Some browsers throw until the video has enough frames; keep scanning.
+    }
+    state.productDetectorFrame = requestAnimationFrame(scanFrame);
+  };
+
+  scanFrame();
+}
+
+async function requestRearProductCameraStream() {
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" } },
+      audio: false,
+    });
+  } catch {
+    return navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false,
+    });
+  }
+}
+
+async function startProductBarcodeScanner({ showFallbackToast = true } = {}) {
+  if (state.productCameraStream) {
+    updateProductCameraControls(true);
     return;
   }
 
   try {
-    const detector = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] });
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    const stream = await requestRearProductCameraStream();
     state.productCameraStream = stream;
     state.productScanActive = true;
     productCameraPreview.srcObject = stream;
-    productCameraWrap?.classList.add("active");
+    updateProductCameraControls(true);
     await productCameraPreview.play();
 
-    const scanFrame = async () => {
-      if (!state.productScanActive) return;
-      try {
-        const codes = await detector.detect(productCameraPreview);
-        const barcode = codes[0]?.rawValue?.replace(/\D/g, "");
-        if (barcode) {
-          productBarcode.value = barcode;
-          stopProductBarcodeScanner();
-          lookupOpenFoodFactsProduct(barcode);
-          return;
-        }
-      } catch {
-        // Some browsers throw until the video has enough frames; keep scanning.
-      }
-      state.productDetectorFrame = requestAnimationFrame(scanFrame);
-    };
-
-    scanFrame();
+    if ("BarcodeDetector" in window) {
+      const detector = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] });
+      startProductDetectorLoop(detector);
+    } else if (showFallbackToast) {
+      showActionToast("Camera on. Type barcode if it does not scan.", "copy");
+    }
   } catch {
     stopProductBarcodeScanner();
     showActionToast("Camera unavailable", "copy");
     productBarcode?.focus();
+  }
+}
+
+function toggleProductCamera() {
+  if (state.productCameraStream) {
+    stopProductBarcodeScanner();
+  } else {
+    startProductBarcodeScanner();
   }
 }
 
@@ -3258,6 +3634,7 @@ async function startCamera() {
     cameraPreview.srcObject = stream;
     cameraPreview.classList.add("active");
     cameraFallback.classList.add("hidden");
+    if (state.flashOn) await setCameraFlash(true);
   } catch {
     cameraPreview.classList.remove("active");
     cameraFallback.classList.remove("hidden");
@@ -3266,10 +3643,47 @@ async function startCamera() {
 
 function stopCamera() {
   if (!state.cameraStream) return;
+  state.flashOn = false;
+  flashToggle?.classList.remove("active");
+  flashToggle?.setAttribute("aria-pressed", "false");
   state.cameraStream.getTracks().forEach((track) => track.stop());
   state.cameraStream = null;
   cameraPreview.srcObject = null;
   cameraPreview.classList.remove("active");
+}
+
+function getCameraVideoTrack() {
+  return state.cameraStream?.getVideoTracks?.()[0] || null;
+}
+
+function cameraSupportsTorch(track = getCameraVideoTrack()) {
+  return Boolean(track?.getCapabilities?.().torch);
+}
+
+async function setCameraFlash(enabled) {
+  const track = getCameraVideoTrack();
+  if (!cameraSupportsTorch(track)) {
+    state.flashOn = false;
+    flashToggle?.classList.remove("active");
+    flashToggle?.setAttribute("aria-pressed", "false");
+    scannerStatus.textContent = "Flash is not available on this camera.";
+    return false;
+  }
+
+  try {
+    await track.applyConstraints({ advanced: [{ torch: enabled }] });
+    state.flashOn = enabled;
+    flashToggle?.classList.toggle("active", enabled);
+    flashToggle?.setAttribute("aria-pressed", String(enabled));
+    scannerStatus.textContent = enabled ? "Flash on." : "Flash off.";
+    return true;
+  } catch {
+    state.flashOn = false;
+    flashToggle?.classList.remove("active");
+    flashToggle?.setAttribute("aria-pressed", "false");
+    scannerStatus.textContent = "Flash could not be turned on.";
+    return false;
+  }
 }
 
 function renderScanPhotos() {
@@ -3287,8 +3701,11 @@ function renderScanPhotos() {
     : `<div class="photo-thumb empty-thumb"></div>`;
 }
 
-function addScanPhoto(source) {
+function addScanPhoto(source, file = null) {
   state.scanPhotos = [...state.scanPhotos, source];
+  if (file) state.scanFiles = [...state.scanFiles, file];
+  state.scanInputs = [...state.scanInputs, file || source];
+  state.scanSource = state.scanInputs;
   renderScanPhotos();
 }
 
@@ -3297,6 +3714,8 @@ function resetScanRun() {
   state.isScanInProgress = false;
   state.eatReturnView = "scan";
   state.scanPhotos = [];
+  state.scanFiles = [];
+  state.scanInputs = [];
   state.scanSource = null;
   state.scanMeta = null;
   state.scanMeals = [];
@@ -3313,7 +3732,6 @@ function resetScanRun() {
 }
 
 function captureMenuPhoto() {
-  resetScanRun();
   if (cameraPreview.videoWidth && cameraPreview.videoHeight) {
     const canvas = document.createElement("canvas");
     canvas.width = cameraPreview.videoWidth;
@@ -3443,6 +3861,12 @@ function bindEvents() {
       return;
     }
 
+    const nutritionInfoButton = event.target.closest("[data-nutrition-info]");
+    if (nutritionInfoButton) {
+      showNutritionInfo();
+      return;
+    }
+
     const rescanMenuButton = event.target.closest("[data-rescan-menu]");
     if (rescanMenuButton) {
       resetScanRun();
@@ -3515,9 +3939,9 @@ function bindEvents() {
 
   document.querySelector("#capturePhoto").addEventListener("click", captureMenuPhoto);
 
-  document.querySelector("#flashToggle").addEventListener("click", (event) => {
-    state.flashOn = !state.flashOn;
-    event.currentTarget.classList.toggle("active", state.flashOn);
+  flashToggle?.setAttribute("aria-pressed", "false");
+  flashToggle?.addEventListener("click", () => {
+    setCameraFlash(!state.flashOn);
   });
 
   productLookupForm?.addEventListener("submit", (event) => {
@@ -3525,31 +3949,36 @@ function bindEvents() {
     lookupOpenFoodFactsProduct(productBarcode?.value);
   });
 
-  document.querySelector("#startProductScanner")?.addEventListener("click", startProductBarcodeScanner);
+  startProductScannerButton?.addEventListener("click", toggleProductCamera);
+  productCameraToggle?.addEventListener("click", toggleProductCamera);
 
 document.querySelector("#menuImage").addEventListener("change", (event) => {
   const files = [...event.target.files];
   if (!files.length) return;
-  resetScanRun();
-  files.forEach((file) => addScanPhoto(URL.createObjectURL(file)));
-  state.scanSource = files;
-  analyzeMenuSource(files, files.map((file) => file.name || "Uploaded menu").join(" + "));
+  files.forEach((file) => addScanPhoto(URL.createObjectURL(file), file));
   event.target.value = "";
 });
 
 nextFromCamera.addEventListener("click", () => {
-  const currentScanSource = Array.isArray(state.scanSource)
-    ? state.scanSource
-    : state.scanPhotos.length
-      ? state.scanPhotos
-      : state.scanSource
-      ? [state.scanSource]
-      : [];
+  const currentScanSource = state.scanInputs.length
+    ? [...state.scanInputs]
+    : Array.isArray(state.scanSource)
+      ? [...state.scanSource]
+      : state.scanPhotos.length
+        ? [...state.scanPhotos]
+        : state.scanSource
+        ? [state.scanSource]
+        : [];
   if (!currentScanSource.length) return;
 
+  const currentScanPhotos = [...state.scanPhotos];
+  const currentScanFiles = [...state.scanFiles];
+  const currentScanInputs = [...state.scanInputs];
   resetScanRun();
   state.scanSource = [...currentScanSource];
-  state.scanPhotos = [...currentScanSource];
+  state.scanPhotos = currentScanPhotos.length ? currentScanPhotos : [...currentScanSource];
+  state.scanFiles = currentScanFiles;
+  state.scanInputs = currentScanInputs;
   renderScanPhotos();
   analyzeMenuSource(state.scanSource, "Captured menu");
 });

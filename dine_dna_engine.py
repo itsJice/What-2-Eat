@@ -122,7 +122,14 @@ def infer_role(name: str, description: str, term: str, default_role: str) -> str
     if phrase_in_text(term, name_text):
         return "prep" if default_role == "prep" else "core"
     before = description_text.split(term, 1)[0] if term in description_text else ""
+    after = description_text.split(term, 1)[1][:36] if term in description_text else ""
     nearby = before[-36:]
+    if term in {"cream", "creamy", "cream sauce"} and ("soup" in name_text or "broth" in after):
+        return "core"
+    if default_role == "core" and any(marker in nearby for marker in ["served over", " over ", "tossed with"]):
+        return "core"
+    if any(marker in nearby for marker in ["served with", "side of", "choice of"]):
+        return "side"
     if any(marker in nearby for marker in ["topped with", "add ", "finished with"]):
         if "sauce" in term or term in {"ranch", "aioli", "mayo", "mayonnaise", "tahini", "alfredo"}:
             return "sauce"
@@ -131,8 +138,6 @@ def infer_role(name: str, description: str, term: str, default_role: str) -> str
         if "sauce" in term or term in {"ranch", "aioli", "mayo", "mayonnaise", "tahini", "alfredo"}:
             return "sauce"
         return "topping"
-    if any(marker in nearby for marker in ["served with", "side of", "choice of"]):
-        return "side"
     if default_role == "prep":
         return "prep"
     if default_role in {"sauce", "topping", "side"}:
@@ -152,7 +157,7 @@ def find_evidence(item: dict[str, Any], enrichment_terms: list[str], profile: di
         for risk, risk_data in (entry["data"].get("risks") or {}).items():
             if risk not in profile["risks"] and not (profile["avoidSharedFryers"] and risk == "fried"):
                 continue
-            key = (entry["canonical"], risk)
+            key = (phrase, risk)
             if key in seen:
                 continue
             seen.add(key)
@@ -247,6 +252,7 @@ def instructions_for(item: dict[str, Any], category: str, evidence: list[dict[st
     remove = []
     substitutions = []
     notes = []
+    side_terms = []
     for ev in evidence:
         restriction = ev.get("restriction")
         if restriction in {"food_term"}:
@@ -257,8 +263,10 @@ def instructions_for(item: dict[str, Any], category: str, evidence: list[dict[st
             confirm.append("Ask if the fryer or prep surface is shared.")
             continue
         conflicts.append(ev.get("message") or f"{term} may conflict with your profile.")
-        if role in {"topping", "side"}:
+        if role == "topping":
             remove.append(term)
+        elif role == "side":
+            side_terms.append(term)
         elif role == "sauce":
             remove.append(term)
             if any(phrase in menu_text for phrase in ["oil and vinegar", "vinaigrette"]):
@@ -275,6 +283,9 @@ def instructions_for(item: dict[str, Any], category: str, evidence: list[dict[st
         notes.append("No direct conflict found against your current Dine DNA.")
     elif category == "confirm":
         confirm.append("Ask staff to confirm ingredients and preparation before ordering.")
+    if side_terms:
+        side_name = " ".join(unique(side_terms)) if len(unique(side_terms)) <= 3 else ", ".join(unique(side_terms))
+        substitutions.append(f"Swap the {side_name} side for another compatible side.")
     return {
         "conflicts": unique(conflicts),
         "confirm": unique(confirm),

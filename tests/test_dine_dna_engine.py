@@ -50,6 +50,17 @@ class DineDnaEngineTests(unittest.TestCase):
         category, _ = category_for(one_item("Chicken Rice Bowl", "rice, pico, avocado"), {"avoidFoods": ["Gluten / Wheat"]})
         self.assertEqual(category, "safe")
 
+    def test_angel_hair_counts_as_gluten_pasta(self):
+        category, item = category_for(one_item("Shrimp Scampi", "shrimp tossed with asparagus, tomatoes and angel hair"), {"avoidFoods": ["Gluten / Wheat"]})
+        self.assertEqual(category, "avoid")
+        self.assertTrue(any(evidence["term"] == "angel hair" for evidence in item["evidence"]))
+
+    def test_breadsticks_and_flatbread_count_as_gluten(self):
+        breadsticks_category, _ = category_for(one_item("Soup Salad Breadsticks", "house salad and breadsticks"), {"avoidFoods": ["Gluten / Wheat"]})
+        flatbread_category, _ = category_for(one_item("Spinach Artichoke Dip", "cheese served with flatbread crisps"), {"avoidFoods": ["Gluten / Wheat"]})
+        self.assertNotEqual(breadsticks_category, "safe")
+        self.assertNotEqual(flatbread_category, "safe")
+
     def test_dairy_cream_soup_is_not_low_effort(self):
         category, item = category_for(one_item("Cream Soup", "cream sauce and parmesan"), {"avoidFoods": ["Dairy"]})
         self.assertIn(category, {"modify", "swap_required", "avoid"})
@@ -59,6 +70,28 @@ class DineDnaEngineTests(unittest.TestCase):
         category, item = category_for(one_item("Garden Salad", "mixed greens topped with feta"), {"avoidFoods": ["Dairy"]})
         self.assertEqual(category, "modify")
         self.assertIn("feta", item["remove"])
+
+    def test_creamy_and_mozzarella_count_as_dairy(self):
+        creamy_category, _ = category_for(one_item("Zuppa Toscana", "sausage, kale and potatoes in a creamy broth"), {"avoidFoods": ["Dairy"]})
+        mozzarella_category, item = category_for(one_item("Grilled Chicken Margherita", "topped with mozzarella and basil pesto"), {"avoidFoods": ["Dairy"]})
+        self.assertEqual(creamy_category, "avoid")
+        self.assertEqual(mozzarella_category, "modify")
+        self.assertIn("mozzarella", item["remove"])
+
+    def test_sirloin_with_butter_and_pasta_side_is_modify(self):
+        category, item = category_for(
+            one_item(
+                "6 OZ SIRLOIN*",
+                "Grilled 6 oz sirloin topped with garlic herb butter. Served with a side of fettuccine alfredo. 980 cal",
+                "$18.99",
+            ),
+            {"avoidFoods": ["Dairy", "Gluten / Wheat"]},
+        )
+        self.assertEqual(category, "modify")
+        self.assertEqual(item["status"], "Safe With Modifications")
+        self.assertIn("butter", item["remove"])
+        self.assertIn("Swap the fettuccine alfredo side for another compatible side.", item["substitutions"])
+        self.assertTrue(all(evidence["role"] != "core" for evidence in item["evidence"]))
 
     def test_soy_teriyaki_chicken_needs_sauce_work(self):
         category, item = category_for(one_item("Teriyaki Chicken", "rice and vegetables"), {"avoidFoods": ["Soy"]})
@@ -121,6 +154,11 @@ class DineDnaEngineTests(unittest.TestCase):
         low_sugar = evaluate_menu(one_item("Chocolate Cake", "sweet dessert"), {"healthNeeds": ["Low Sugar"]})
         self.assertEqual(low_sugar["items"][0]["category"], "safe")
         self.assertLess(low_sugar["items"][0]["score"], plain["items"][0]["score"])
+
+    def test_dessert_terms_trigger_dairy_and_gluten(self):
+        category, item = category_for(one_item("Tiramisu", "creamy custard over espresso-soaked ladyfingers"), {"avoidFoods": ["Dairy", "Gluten / Wheat"]})
+        self.assertEqual(category, "avoid")
+        self.assertTrue(item["evidence"])
 
     def test_love_and_dont_love_are_ranking_only(self):
         loved = evaluate_menu(one_item("Chicken Rice Bowl", "rice and vegetables"), {"loveFoods": ["Chicken"]})

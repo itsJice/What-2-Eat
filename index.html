@@ -19,7 +19,7 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="assets/logo-icon.png?v=new-logo-1" type="image/png" />
     <link rel="apple-touch-icon" href="/assets/app-icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=three-dots-1" />
+    <link rel="stylesheet" href="styles.css?v=nutri-guide-copy-1" />
   </head>
   <body>
     <div class="phone-shell">
@@ -203,6 +203,12 @@
                   </svg>
                   <span>Barcode scanner</span>
                 </div>
+                <button class="product-camera-toggle" id="toggleProductCamera" type="button" aria-label="Turn camera on" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7h3l2-2h6l2 2h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z" />
+                    <circle cx="12" cy="13" r="3.2" />
+                  </svg>
+                </button>
               </div>
 
               <form class="product-search-form" id="productLookupForm">
@@ -212,7 +218,7 @@
                 </label>
                 <div class="product-actions">
                   <button class="primary-action" id="lookupProduct" type="submit">Look up</button>
-                  <button class="secondary-action" id="startProductScanner" type="button">Scan barcode</button>
+                  <button class="secondary-action" id="startProductScanner" type="button">Camera on</button>
                 </div>
               </form>
             </div>
@@ -314,6 +320,6 @@
       </div>
     </div>
 
-    <script src="app.js?v=three-dots-1"></script>
+    <script src="app.js?v=nutri-guide-copy-1"></script>
   </body>
 </html>
