@@ -147,7 +147,7 @@ Grounded state: `#product-scan` view (`index.html:188`), native `BarcodeDetector
 
 _Fable appends here as phases complete: date · phase · what changed · tests · commit._
 
-- _(not started)_
+- **2026-07-09 · Phase 1A complete.** Removed all demo shims: `texasChiliMenu` hardcoded menu (167 lines), `classifyTexasChiliItem`, `buildTexasChiliScan`, `looksLikeTexasChiliSource`, shim-only helpers (`removablePartsForTag`, `sortPersonalizedItems`, `profileGoalTags`), the TexasChili test harness + window exports, and both pipeline intercepts in `analyzeMenuSource` (~380 lines total from app.js). Server: deleted the hardcoded Texas Roadhouse dish dictionary `PDF_TEXT_ARTIFACT_NAMES` + key lookup; generalized `repair_pdf_artifact_spacing` with two new generic rules (trailing-fragment merge, apostrophe-space collapse) — "a nd Y ’s s tea K *" → "Andy's Steak*" now repairs via pure heuristics. Kept: `allowedTestMenuIds`/test-menu panel (sanctioned dev tooling via `/api/dev/test-menu-scan`), `buildRecommendedOrder` + `profileAvoidTags` (shared with general paths). Tests: 37 → 38 green (replaced dict-pinned assertions with general-behavior + no-short-fragments regression test). Mock-mode E2E smoke test passed (multipart scan → sections/items/recommendedOrder).
 
 ---
 

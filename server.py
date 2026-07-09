@@ -424,30 +424,6 @@ def parse_json_text(text: str) -> dict[str, Any]:
         raise HTTPException(status_code=502, detail="AI returned invalid JSON.") from exc
 
 
-PDF_TEXT_ARTIFACT_NAMES = {
-    "a nd y's s tea k": "Andy's Steak",
-    "a nd y's s tea k *": "Andy's Steak*",
-    "a nd y's s tea k*": "Andy's Steak*",
-    "chick en c ritters ® b as k et": "Chicken Critters® Basket",
-    "chick en c ritters® b as k et": "Chicken Critters® Basket",
-    "country fried chicken": "Country Fried Chicken",
-    "chicken critters®": "Chicken Critters®",
-    "grilled bbq chicken": "Grilled BBQ Chicken",
-    "chicken caesar salad": "Chicken Caesar Salad",
-    "chicken critter® salad": "Chicken Critter® Salad",
-    "grilled chicken salad": "Grilled Chicken Salad",
-    "steakhouse filet salad*": "Steakhouse Filet Salad*",
-}
-
-
-def normalize_pdf_artifact_key(value: str) -> str:
-    normalized = str(value or "").replace("’", "'").replace("™", "").strip()
-    normalized = re.sub(r"\s+", " ", normalized)
-    normalized = re.sub(r"\s+'", "'", normalized)
-    normalized = re.sub(r"\s+([®*])", r"\1", normalized)
-    return normalized.lower()
-
-
 def looks_like_pdf_text_artifact(value: str) -> bool:
     text = str(value or "")
     words = re.findall(r"[A-Za-z]+", text)
@@ -465,6 +441,7 @@ def looks_like_pdf_text_artifact(value: str) -> bool:
 def repair_pdf_artifact_spacing(value: str) -> str:
     text = str(value or "").replace("’", "'").replace("™", "").strip()
     text = re.sub(r"\s+([®*])", r"\1", text)
+    text = re.sub(r"\s*'\s*", "'", text)
     tokens = re.findall(r"[A-Za-z]+(?:'[A-Za-z]+)?|[®*]|&|\d+(?:\.\d+)?|[^A-Za-z\s]", text)
     words: list[str] = []
     pending_prefix = ""
@@ -477,9 +454,14 @@ def repair_pdf_artifact_spacing(value: str) -> str:
             continue
 
         next_token = tokens[index + 1] if index + 1 < len(tokens) else ""
-        is_short_prefix = len(token) <= 2 and re.fullmatch(r"[A-Za-z]+(?:'[A-Za-z]+)?", next_token or "") is not None
-        if is_short_prefix:
+        next_is_word = re.fullmatch(r"[A-Za-z]+(?:'[A-Za-z]+)?", next_token or "") is not None
+        if len(token) <= 2 and next_is_word:
+            # Short fragment followed by another word: treat as a broken prefix ("s tea" -> "stea").
             pending_prefix += token
+            continue
+        if len(token) <= 2 and not next_is_word and not pending_prefix and words and re.fullmatch(r"[A-Za-z]+(?:'[A-Za-z]+)?", words[-1] or ""):
+            # Short trailing fragment with no word after it: merge into the previous word ("stea k" -> "steak").
+            words[-1] = f"{words[-1]}{token}"
             continue
 
         words.append(f"{pending_prefix}{token}")
@@ -515,15 +497,8 @@ def clean_menu_item_name(value: str) -> str:
     text = str(value or "").strip()
     if not text:
         return ""
-    key = normalize_pdf_artifact_key(text)
-    if key in PDF_TEXT_ARTIFACT_NAMES:
-        return PDF_TEXT_ARTIFACT_NAMES[key]
     if looks_like_pdf_text_artifact(text):
-        repaired = repair_pdf_artifact_spacing(text)
-        repaired_key = normalize_pdf_artifact_key(repaired)
-        if repaired_key in PDF_TEXT_ARTIFACT_NAMES:
-            return PDF_TEXT_ARTIFACT_NAMES[repaired_key]
-        return title_case_menu_name(repaired)
+        return title_case_menu_name(repair_pdf_artifact_spacing(text))
     return text
 
 

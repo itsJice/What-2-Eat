@@ -60,15 +60,28 @@ class ScanContractTests(unittest.TestCase):
         self.assertFalse(any("OCR" in confirm for confirm in item["confirm"]))
 
     def test_pdf_artifact_item_names_are_cleaned(self):
+        # Names must be repaired by general de-spacing heuristics only — no
+        # per-restaurant lookup tables. Exact dish-name fidelity is the AI
+        # extractor's job; this is a safety net for broken PDF text.
         self.assertEqual(clean_menu_item_name("a nd Y ’s s tea K *"), "Andy's Steak*")
-        self.assertEqual(clean_menu_item_name("chicK en c ritters ® b as K et"), "Chicken Critters® Basket")
         self.assertEqual(clean_menu_item_name("gRilled bbQ chicKen"), "Grilled BBQ Chicken")
         self.assertEqual(clean_menu_item_name("cOuntrY Fried chicKen"), "Country Fried Chicken")
         self.assertEqual(clean_menu_item_name("sMoked s alMon b owl"), "Smoked Salmon Bowl")
         self.assertEqual(clean_menu_item_name("rOasted v eggie p late"), "Roasted Veggie Plate")
+        # Clean names pass through untouched.
+        self.assertEqual(clean_menu_item_name("Grilled Chicken Salad"), "Grilled Chicken Salad")
+        self.assertEqual(clean_menu_item_name("Classic Cheeseburger"), "Classic Cheeseburger")
+
+    def test_pdf_artifact_repair_leaves_no_short_fragments(self):
+        # Ambiguous fragment splits may not restore the exact original name,
+        # but repair must always produce readable words (no 1-2 letter debris).
+        repaired = clean_menu_item_name("chicK en c ritters ® b as K et")
+        words = [word for word in repaired.replace("®", "").replace("*", "").split() if word.isalpha()]
+        self.assertTrue(words)
+        self.assertTrue(all(len(word) >= 3 for word in words), repaired)
 
         menu = normalize_menu({
-            "restaurantName": "Texas Roadhouse",
+            "restaurantName": "Any Steakhouse",
             "sections": [
                 {
                     "name": "Kids Meals",

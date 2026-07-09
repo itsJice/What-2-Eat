@@ -689,174 +689,6 @@ const genericMenuSectionTitle = "Menu items";
 const allowedTestMenuIds = ["ihop", "menu-w", "olive-garden", "texas-roadhouse"];
 let testMenus = [];
 
-const texasChiliMenu = {
-  title: "Texas Chili Restaurant",
-  source: "Texas Chili menu images",
-  sections: [
-    {
-      title: "Breakfast",
-      items: [
-        { name: "Pancakes", description: "Egg, bacon or sausage", tags: ["gluten", "egg", "pork", "sweet", "soft"] },
-        { name: "Egg + Turkey or Sausage", description: "Egg with turkey or sausage", tags: ["egg", "pork", "soft"] },
-        { name: "Egg + Bacon", description: "Egg with bacon", tags: ["egg", "pork", "soft"] },
-        { name: "Egg + Cheese", description: "Egg with cheese", tags: ["egg", "dairy", "soft"], removable: ["cheese"] },
-        { name: "Veggie Omelet", description: "Green peppers, onions, cheese", tags: ["egg", "dairy", "onions", "soft"], removable: ["cheese", "onions"] },
-        { name: "Western Omelet", description: "Ham, peppers, onion & cheese", tags: ["egg", "pork", "dairy", "onions", "soft"], removable: ["ham", "cheese", "onions"] },
-        { name: "Beans & Cheese", description: "White rice, beans, chocolate or bacon, ham or sausage", tags: ["dairy", "pork", "soft"], removable: ["cheese", "bacon", "ham", "sausage"] },
-      ],
-    },
-    {
-      title: "Breakfast Extras",
-      items: [
-        { name: "EGG", description: "Extra egg", tags: ["egg", "soft"] },
-        { name: "2 EGGS", description: "2 extra eggs", tags: ["egg", "soft"] },
-        { name: "TOAST", description: "Extra toast", tags: ["gluten"] },
-        { name: "BACON, HAM OR SAUSAGE", description: "Your choice of bacon, ham, or sausage", tags: ["pork"] },
-      ],
-    },
-    {
-      title: "Breakfast Sandwiches",
-      items: [
-        { name: "BACON", description: "Egg & cheese", tags: ["gluten", "egg", "dairy", "pork"], removable: ["bacon", "cheese"] },
-        { name: "SAUSAGE", description: "Egg & cheese", tags: ["gluten", "egg", "dairy", "pork"], removable: ["sausage", "cheese"] },
-        { name: "CHORIZO", description: "Egg & cheese", tags: ["gluten", "egg", "dairy", "pork"], removable: ["chorizo", "cheese"] },
-        { name: "TURKEY", description: "Egg & cheese", tags: ["gluten", "egg", "dairy", "chicken"], removable: ["cheese"] },
-        { name: "HAM", description: "Egg & cheese", tags: ["gluten", "egg", "dairy", "pork"], removable: ["ham", "cheese"] },
-        { name: "STEAK", description: "Egg & cheese", tags: ["gluten", "egg", "dairy", "beef"], removable: ["cheese"] },
-        { name: "HOME FRIES", description: "Egg & cheese", tags: ["gluten", "egg", "dairy", "fried"], removable: ["cheese"] },
-        { name: "PEPPERS & ONION", description: "Egg & cheese", tags: ["gluten", "egg", "dairy", "onions"], removable: ["cheese", "onions"] },
-        { name: "POTATOES", description: "Egg & cheese", tags: ["gluten", "egg", "dairy"], removable: ["cheese"] },
-        { name: "EGG", description: "Egg & cheese", tags: ["gluten", "egg", "dairy", "soft"], removable: ["cheese"] },
-        { name: "BAGELS", description: "Cream cheese", tags: ["gluten", "dairy"], removable: ["cream cheese"] },
-      ],
-    },
-    {
-      title: "Dishes",
-      items: [
-        { name: "HUEVOS CON CHORIZO", description: "With beans, cheese, and tortilla", tags: ["egg", "pork", "dairy", "corn", "soft"], removable: ["chorizo", "cheese"] },
-        { name: "CHILAQUILES", description: "With beans, cheese, and tortilla", tags: ["egg", "dairy", "corn", "soft"], removable: ["cheese"] },
-        { name: "HUEVOS RANCHERO", description: "With beans, cheese, and tortilla", tags: ["egg", "dairy", "corn", "soft"], removable: ["cheese"] },
-        { name: "HUEVOS REVUELTOS", description: "With beans, cheese, and tortilla", tags: ["egg", "dairy", "corn", "soft"], removable: ["cheese"] },
-        { name: "DESAYUNO MEXICANO", description: "Ranch-style eggs with jalapeno, tomato, onion, and tortilla", tags: ["egg", "spicy", "onions", "corn", "soft"], removable: ["jalapeno", "onion"] },
-        { name: "DESAYUNO AMERICANO", description: "2 eggs any style with fries and toast + your choice of bacon, ham, or sausage", tags: ["egg", "gluten", "pork", "fried", "soft"], removable: ["fries", "toast", "bacon", "ham", "sausage"] },
-      ],
-    },
-    {
-      title: "Salads",
-      items: [
-        { name: "TOSSED SALAD", description: "Tomato, cucumber, onion, avocado and peppers", tags: ["vegetables", "onions"], removable: ["onion"] },
-        { name: "GRILLED CHICKEN", description: "Chicken with salad", tags: ["chicken", "vegetables"] },
-        { name: "CHICKEN NUGGETS", description: "Chicken nuggets with salad", tags: ["chicken", "fried", "gluten", "vegetables"] },
-      ],
-    },
-    {
-      title: "Breakfast Wraps",
-      items: [
-        { name: "CHORIZO OR BACON", description: "w/ egg & cheese", tags: ["gluten", "egg", "dairy", "pork"], removable: ["chorizo", "bacon", "cheese"] },
-        { name: "CHICKEN", description: "w/ egg & cheese", tags: ["gluten", "egg", "dairy", "chicken"], removable: ["cheese"] },
-        { name: "STEAK", description: "w/ egg & cheese", tags: ["gluten", "egg", "dairy", "beef"], removable: ["cheese"] },
-      ],
-    },
-    {
-      title: "Lunch Wedges",
-      items: [
-        { name: "CHICKEN CALIFORNIA", description: "Chicken breast cutlet or grilled chicken, lettuce, tomato & mayo", tags: ["gluten", "chicken", "egg"] },
-        { name: "STEAK CALIFORNIA", description: "Steak, lettuce, tomato & mayo", tags: ["gluten", "beef", "egg"] },
-        { name: "PHILLY CHEESE STEAK", description: "Steak, cheese, lettuce, tomato & mayo", tags: ["gluten", "beef", "dairy", "egg"], removable: ["cheese"] },
-        { name: "BUFFALO CHICKEN", description: "Buffalo chicken, lettuce, tomato & mayo", tags: ["gluten", "chicken", "egg", "spicy"] },
-        { name: "CALIFORNIA BURGER", description: "Burger, cheese, lettuce, tomato & mayo", tags: ["gluten", "beef", "dairy", "egg"], removable: ["cheese"] },
-        { name: "CHICKEN CUTLET", description: "Chicken, lettuce, tomato & mayo", tags: ["gluten", "chicken", "egg"] },
-        { name: "CHICKEN PARMIGIANA", description: "Chicken, cheese, sauce", tags: ["gluten", "chicken", "dairy"], removable: ["cheese"] },
-        { name: "CHICKEN CAESAR", description: "Chicken, cheese, lettuce, tomato & mayo", tags: ["gluten", "chicken", "dairy", "egg"], removable: ["cheese"] },
-        { name: "ITALIAN HOT SAUSAGE", description: "Sausage with sauce", tags: ["gluten", "pork", "spicy"] },
-        { name: "MEATBALL", description: "Meatball with sauce", tags: ["gluten", "beef"] },
-        { name: "MEATBALL PARMIGIANA", description: "Meatball, sauce and cheese", tags: ["gluten", "beef", "dairy"], removable: ["cheese"] },
-      ],
-    },
-    {
-      title: "Wraps",
-      items: [
-        { name: "CHICKEN", description: "May add chicken, cheese, mayo, ranch or blue cheese", tags: ["gluten", "chicken", "dairy", "egg"], removable: ["cheese", "mayo", "ranch", "blue cheese"] },
-        { name: "STEAK", description: "May add chicken, cheese, mayo, ranch or blue cheese", tags: ["gluten", "beef", "dairy", "egg"], removable: ["cheese", "mayo", "ranch", "blue cheese"] },
-      ],
-    },
-    {
-      title: "Burgers",
-      items: [
-        { name: "PLAIN BURGER", description: "Burger", tags: ["gluten", "beef"] },
-        { name: "CHEESE burger", description: "Burger with cheese", tags: ["gluten", "beef", "dairy"], removable: ["cheese"] },
-        { name: "CHILI CHEESE", description: "Burger with chili and cheese", tags: ["gluten", "beef", "dairy"], removable: ["cheese", "chili"] },
-        { name: "BACON CHEESE", description: "Burger with bacon and cheese", tags: ["gluten", "beef", "pork", "dairy"], removable: ["bacon", "cheese"] },
-        { name: "TEXAS CALIFORNIA BURGER", description: "Burger, cheese, lettuce, tomato & mayo", tags: ["gluten", "beef", "dairy", "egg"], removable: ["cheese", "mayo"] },
-        { name: "BACON HAMBURGER", description: "Hamburger with bacon", tags: ["gluten", "beef", "pork"], removable: ["bacon"] },
-      ],
-    },
-    {
-      title: "Hot dogs",
-      items: [
-        { name: "PLAIN hot dog", description: "Plain hot dog", tags: ["gluten", "beef"] },
-        { name: "CHILI hot dog", description: "Hot dog with chili", tags: ["gluten", "beef"] },
-        { name: "CHEESE hot dog", description: "Hot dog with cheese", tags: ["gluten", "beef", "dairy"], removable: ["cheese"] },
-        { name: "CHILI & CHEESE hot dog", description: "Hot dog with chili and cheese", tags: ["gluten", "beef", "dairy"], removable: ["cheese"] },
-        { name: "CHILI & ONION hot dog", description: "Hot dog with chili and onion", tags: ["gluten", "beef", "onions"], removable: ["onion"] },
-        { name: "CHILI & SAUERKRAUT hot dog", description: "Hot dog with chili and sauerkraut", tags: ["gluten", "beef"] },
-        { name: "SAUERKRAUT & ONIONS hot dog", description: "Hot dog with sauerkraut and onions", tags: ["gluten", "beef", "onions"], removable: ["onions"] },
-      ],
-    },
-    {
-      title: "Deep Fried",
-      items: [
-        { name: "MOZZARELLA STICK", description: "Fried mozzarella stick", tags: ["gluten", "dairy", "fried"] },
-        { name: "MUSHROOMS", description: "Fried mushrooms", tags: ["gluten", "mushrooms", "fried"] },
-        { name: "BUFFALO WINGS", description: "Buffalo wings", tags: ["chicken", "spicy", "fried"] },
-        { name: "CHICKEN NUGGETS", description: "Chicken nuggets", tags: ["gluten", "chicken", "fried"] },
-        { name: "FRIED HOTDOGS", description: "Served w/ french fries", tags: ["gluten", "beef", "fried"], removable: ["french fries"] },
-      ],
-    },
-    {
-      title: "Tacos",
-      items: [
-        { name: "CHICKEN", description: "Soft corn tortilla filled w/ pico and cilantro", tags: ["chicken", "corn", "onions"] },
-        { name: "CHORIZO", description: "Soft corn tortilla filled w/ pico and cilantro", tags: ["pork", "corn", "onions"] },
-        { name: "CHILI", description: "Soft corn tortilla filled w/ pico and cilantro", tags: ["beef", "corn", "onions"] },
-        { name: "LENGUA", description: "Soft corn tortilla filled w/ pico and cilantro", tags: ["beef", "corn", "onions"] },
-      ],
-    },
-    {
-      title: "Nachos",
-      items: [
-        { name: "CHICKEN", description: "Nachos with chicken", tags: ["chicken", "corn", "dairy"], removable: ["cheese"] },
-        { name: "CHORIZO", description: "Nachos with chorizo", tags: ["pork", "corn", "dairy"], removable: ["chorizo", "cheese"] },
-        { name: "CHILI & CHEESE", description: "Nachos with chili and cheese", tags: ["beef", "corn", "dairy"], removable: ["cheese"] },
-      ],
-    },
-    {
-      title: "Sides",
-      items: [
-        { name: "FRENCH FRIES", description: "w/ chili & cheese available", tags: ["fried"], removable: ["chili", "cheese"] },
-        { name: "CURLY FRIES", description: "w/ chili & cheese available", tags: ["fried"], removable: ["chili", "cheese"] },
-        { name: "PIZZA FRIES", description: "w/ chili & cheese", tags: ["fried", "dairy"], removable: ["cheese"] },
-        { name: "ONION RINGS", description: "w/ chili & cheese available", tags: ["fried", "gluten", "onions"], removable: ["chili", "cheese"] },
-        { name: "CHILI", description: "Chili", tags: ["beef", "soft"] },
-        { name: "CHILI & CHEESE", description: "Chili with cheese", tags: ["beef", "dairy", "soft"], removable: ["cheese"] },
-        { name: "CHILI & CHEESE W/ ONIONS", description: "Chili with cheese and onions", tags: ["beef", "dairy", "onions", "soft"], removable: ["cheese", "onions"] },
-        { name: "HAND CUT FRIES", description: "Fries", tags: ["fried"] },
-        { name: "SWEET POTATO FRIES", description: "Sweet potato fries", tags: ["fried", "sweet"] },
-        { name: "FRIED MUSHROOMS", description: "Fried mushrooms", tags: ["fried", "mushrooms", "gluten"] },
-        { name: "FRIED PICKLES", description: "Fried pickles", tags: ["fried", "gluten"] },
-      ],
-    },
-    {
-      title: "Extras",
-      items: [
-        { name: "BACON", description: "Extra bacon", tags: ["pork"] },
-        { name: "CHILI", description: "Extra chili", tags: ["beef", "soft"] },
-        { name: "CHEESE", description: "Extra cheese", tags: ["dairy"] },
-      ],
-    },
-  ],
-};
-
 function keywordsForAvoidItem(item) {
   const lower = item.toLowerCase();
   if (lower === "dairy") return menuKeywordGroups.dairy;
@@ -1454,120 +1286,6 @@ function profileAvoidTags() {
   return [...new Set(tags)];
 }
 
-function profileGoalTags() {
-  const tags = [];
-  if (state.profile.healthNeeds.includes("Low Carb") || state.profile.healthNeeds.includes("Diabetic-Friendly")) {
-    tags.push("gluten", "corn", "sweet", "fried");
-  }
-  return [...new Set(tags)];
-}
-
-function removablePartsForTag(item, tag) {
-  const parts = item.removable || [];
-  const aliases = {
-    dairy: ["cheese", "cream cheese", "queso", "ranch", "blue cheese"],
-    pork: ["bacon", "ham", "sausage", "chorizo"],
-    fried: ["fries", "french fries"],
-    onions: ["onion", "onions", "cebolla"],
-    spicy: ["jalapeno"],
-  };
-  return parts.filter((part) => (aliases[tag] || [tag]).some((alias) => part.toLowerCase().includes(alias)));
-}
-
-function classifyTexasChiliItem(item) {
-  const avoidTags = profileAvoidTags();
-  const goalTags = profileGoalTags();
-  const hardHits = avoidTags.filter((tag) => item.tags?.includes(tag));
-  const goalHits = goalTags.filter((tag) => item.tags?.includes(tag));
-  const remove = [];
-  const confirm = [];
-  const substitutions = [];
-  const notes = [];
-  let status = "Safe to Order As-Is";
-  let score = 100;
-
-  hardHits.forEach((hit) => {
-    const removable = removablePartsForTag(item, hit);
-    if (removable.length) {
-      remove.push(...removable);
-      if (status !== "Likely Unsafe") status = "Safe With Modifications";
-      score -= 25;
-    } else {
-      status = "Likely Unsafe";
-      score -= 80;
-      notes.push(`Contains ${displayTerm(hit)} based on the menu text.`);
-    }
-  });
-
-  if ((state.profile.healthNeeds.includes("Low Carb") || state.profile.healthNeeds.includes("Diabetic-Friendly")) && goalHits.length) {
-    if (status === "Safe to Order As-Is") status = "Safe With Modifications";
-    score -= 18;
-    if (item.removable?.includes("fries")) remove.push("fries");
-    if (item.removable?.includes("toast")) remove.push("toast");
-    confirm.push("Ask if they can make it without bread, fries, toast, or sugary sides.");
-  }
-
-  if (state.profile.healthNeeds.includes("Soft Foods Only")) {
-    if (item.tags?.includes("soft")) score += 12;
-    if ((item.tags?.includes("fried") || item.tags?.includes("gluten")) && status === "Safe to Order As-Is") {
-      status = "Safe With Modifications";
-      confirm.push("Double-check that the texture works for you.");
-      score -= 10;
-    }
-  }
-
-  state.profile.dontLoveFoods.forEach((food) => {
-    const keywords = keywordsForAvoidItem(food).map((keyword) => keyword.toLowerCase());
-    const itemText = `${item.name} ${item.description}`.toLowerCase();
-    if (keywords.some((keyword) => itemText.includes(keyword))) {
-      score -= 12;
-    }
-  });
-
-  state.profile.loveFoods.forEach((food) => {
-    const loveLower = food.toLowerCase();
-    const keywords = loveFoodKeywords[loveLower] || [loveLower];
-    if (textHasKeyword(`${item.name} ${item.description}`.toLowerCase(), keywords)) score += 8;
-  });
-
-  const uniqueRemove = [...new Set(remove)].filter(Boolean);
-  const uniqueConfirm = [...new Set(confirm)].filter(Boolean);
-  const uniqueNotes = [...new Set(notes)].filter(Boolean);
-
-  if (uniqueRemove.length) substitutions.push(`Remove ${uniqueRemove.join(", ")}.`);
-  if (!uniqueNotes.length && status === "Safe to Order As-Is") uniqueNotes.push("No direct conflict found from the saved Taste profile.");
-  if (!uniqueNotes.length && status === "Safe With Modifications") uniqueNotes.push("This can work if the listed edits are possible at the counter.");
-
-  return {
-    ...item,
-    restaurant: texasChiliMenu.title,
-    sourceTrace: "texas-chili-source",
-    status,
-    score,
-    confidence: hardHits.length || goalHits.length ? "Medium" : "High",
-    summary: status === "Safe to Order As-Is"
-      ? "Looks like one of the easier options from this menu for your Taste profile."
-      : status === "Safe With Modifications"
-        ? "Use the edits below to make this fit better."
-        : "This conflicts with foods you marked as not edible.",
-    ingredients: [item.description],
-    remove: uniqueRemove,
-    confirm: uniqueConfirm,
-    substitutions,
-    notes: uniqueNotes,
-    tags: item.tags || [],
-  };
-}
-
-function sortPersonalizedItems(items) {
-  const rank = {
-    "Safe to Order As-Is": 0,
-    "Safe With Modifications": 1,
-    "Likely Unsafe": 2,
-  };
-  return [...items].sort((a, b) => (rank[a.status] - rank[b.status]) || (b.score - a.score) || (a.originalIndex - b.originalIndex));
-}
-
 function buildRecommendedOrder(sections) {
   const allItems = sections.flatMap((section) => section.items.map((item) => ({ ...item, sectionTitle: section.title })));
   const candidates = allItems
@@ -1602,44 +1320,6 @@ function buildRecommendedOrder(sections) {
       ...main.confirm.map(cleanGuidanceText),
     ]),
   };
-}
-
-function buildTexasChiliScan() {
-  const sections = texasChiliMenu.sections.map((section) => {
-    const items = section.items.map((item, index) => classifyTexasChiliItem({ ...item, sectionTitle: section.title, originalIndex: index }));
-    return { title: section.title, items: sortPersonalizedItems(items) };
-  });
-  const items = sections.flatMap((section) => section.items);
-  return {
-    sourceId: "texas-chili-known-menu",
-    sourceName: texasChiliMenu.title,
-    parserVersion: scanParserVersion,
-    parserUsed: "texas-chili-source",
-    confidence: "High",
-    failure: null,
-    title: texasChiliMenu.title,
-    rawText: texasChiliMenu.source,
-    sections,
-    items,
-    hasText: true,
-    sourceTruth: "Texas Chili menu images",
-    rejectedLineCount: 0,
-    recommendedOrder: buildRecommendedOrder(sections),
-  };
-}
-
-function looksLikeTexasChiliSource(source, sourceLabel = "", rawText = "") {
-  const sources = Array.isArray(source) ? source : [source];
-  const names = [sourceLabel, ...sources.map((item) => item?.name || "")]
-    .join(" ")
-    .toLowerCase()
-    .replace(/%20/g, " ");
-  const hasKnownImageName = /(^|[\s/\\])o\s*(\(1\))?\.jpe?g\b/.test(names);
-  const hasBothKnownImages = names.includes("o.jpg") && names.includes("o (1).jpg");
-  const hasKnownHeicImages = names.includes("img_8241.heic") && names.includes("img_8242.heic");
-  const hasTexasChiliText = rawText.toLowerCase().includes("texas chili restaurant") && rawText.toLowerCase().includes("mamaroneck");
-  const hasExplicitTestTag = /texas[- ]?chili[- ]?test|test menu/i.test(names);
-  return hasKnownImageName || hasBothKnownImages || hasKnownHeicImages || hasTexasChiliText || hasExplicitTestTag;
 }
 
 function scanFailureResult(sourceLabel, reason = "Could not read enough real menu text.", debug = {}) {
@@ -2022,22 +1702,7 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
   let scanData = null;
   let rawText = "";
   try {
-    if (looksLikeTexasChiliSource(sources, sourceLabel)) {
-      setScanLoadingState("scanning", {
-        progress: 0.18,
-        pageIndex: 1,
-        pageTotal: sources.length,
-        detail: "Recognized this menu. Pulling the saved layout into place.",
-      });
-      await delay(900);
-      setScanLoadingState("building", {
-        progress: 0.82,
-        pageIndex: sources.length,
-        pageTotal: sources.length,
-        detail: "Sorting the menu into the useful dropdowns.",
-      });
-      scanData = buildTexasChiliScan();
-    } else {
+    {
       const ocrProgress = Array(sources.length).fill(0);
       const updateOcrProgress = (index, progress) => {
         ocrProgress[index] = Math.max(ocrProgress[index], Math.max(0, Math.min(1, progress || 0)));
@@ -2093,22 +1758,12 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
         await delay(500);
         rawText = texts.join("\n\n");
 
-        if (looksLikeTexasChiliSource(sources, sourceLabel, rawText)) {
-          setScanLoadingState("building", {
-            progress: 0.86,
-            pageIndex: sources.length,
-            pageTotal: sources.length,
-            detail: "Recognized the restaurant. Organizing the saved menu.",
+        scanData = parseScanMeals(rawText, sourceLabel, sourceId);
+        if (scanData?.failure) {
+          scanData = scanFailureResult(sourceLabel, friendlyAiScanFailure(error), {
+            parserUsed: "openai-vision-evidence",
+            sourceId,
           });
-          scanData = buildTexasChiliScan();
-        } else {
-          scanData = parseScanMeals(rawText, sourceLabel, sourceId);
-          if (scanData?.failure) {
-            scanData = scanFailureResult(sourceLabel, friendlyAiScanFailure(error), {
-              parserUsed: "openai-vision-evidence",
-              sourceId,
-            });
-          }
         }
       }
       if (scanData?.failure && shouldRetryWithRelaxedParser(sources, sourceLabel, rawText)) {
@@ -4157,64 +3812,6 @@ nextFromCamera.addEventListener("click", () => {
   document.querySelector("#compatibilityFilter")?.addEventListener("change", renderRestaurants);
 }
 
-const texasChiliTestProfiles = [
-  { name: "Gluten / Wheat free", avoidFoods: ["Gluten / Wheat"], eatingStyle: [], healthNeeds: [] },
-  { name: "Dairy free", avoidFoods: ["Dairy"], eatingStyle: [], healthNeeds: [] },
-  { name: "Vegetarian", avoidFoods: [], eatingStyle: ["Vegetarian"], healthNeeds: [] },
-  { name: "Pork free / Halal-style", avoidFoods: ["Pork", "Alcohol"], eatingStyle: ["Halal"], healthNeeds: [] },
-  { name: "Low carb / diabetic-friendly", avoidFoods: [], eatingStyle: [], healthNeeds: ["Low Carb", "Diabetic-Friendly"] },
-  { name: "No fried foods", avoidFoods: [], eatingStyle: [], healthNeeds: ["No Fried Foods"] },
-  { name: "Soft foods only", avoidFoods: [], eatingStyle: [], healthNeeds: ["Soft Foods Only"] },
-];
-
-function runTexasChiliTests() {
-  const originalProfile = JSON.parse(JSON.stringify(state.profile));
-  const requiredSections = ["Breakfast", "Lunch Wedges", "Burgers", "Hot dogs", "Deep Fried", "Tacos", "Nachos", "Sides", "Salads", "Wraps", "Extras"];
-  const templateNames = ["Grilled Chicken Rice Bowl", "Garden Taco Plate", "Chicken Rice Bowl", "Falafel Wrap", "Creamy Alfredo Pasta"];
-  const results = texasChiliTestProfiles.map((profile) => {
-    state.profile = {
-      ...state.profile,
-      userName: profile.name,
-      eatingStyle: profile.eatingStyle,
-      avoidFoods: profile.avoidFoods,
-      manualAvoidFoods: profile.avoidFoods,
-      healthNeeds: profile.healthNeeds,
-      loveFoods: [],
-      dontLoveFoods: [],
-    };
-    syncAvoidFoodsFromDietStyles();
-    const scan = buildTexasChiliScan();
-    const sections = scan.sections.map((section) => section.title);
-    const allItems = scan.sections.flatMap((section) => section.items.map((item) => item.name));
-    const hasRequiredSections = requiredSections.every((section) => sections.includes(section));
-    const hasOriginalNames = ["PLAIN BURGER", "MOZZARELLA STICK", "HUEVOS CON CHORIZO", "CHICKEN CALIFORNIA"].every((name) => allItems.includes(name));
-    const hasNoTemplate = !allItems.some((name) => templateNames.includes(name));
-    const hasModifyGuidance = scan.sections
-      .flatMap((section) => section.items)
-      .filter((item) => item.status === "Safe With Modifications")
-      .every((item) => item.remove.length || item.confirm.length || item.substitutions.length);
-    const sortedByStatus = scan.sections.every((section) => {
-      const ranks = section.items.map((item) => item.status === "Safe to Order As-Is" ? 0 : item.status === "Safe With Modifications" ? 1 : 2);
-      return ranks.every((rank, index) => index === 0 || rank >= ranks[index - 1]);
-    });
-    return {
-      profile: profile.name,
-      pass: hasRequiredSections && hasOriginalNames && hasNoTemplate && hasModifyGuidance && sortedByStatus && !!scan.recommendedOrder,
-      sections: sections.length,
-      items: allItems.length,
-      hasRequiredSections,
-      hasOriginalNames,
-      hasNoTemplate,
-      hasModifyGuidance,
-      sortedByStatus,
-      recommendedOrder: scan.recommendedOrder?.summary || "",
-    };
-  });
-  state.profile = originalProfile;
-  syncAvoidFoodsFromDietStyles();
-  return results;
-}
-
 function init() {
   loadState();
   populateTestMenus();
@@ -4232,8 +3829,6 @@ function init() {
   bindEvents();
   window.__w2eSetView = setView;
   window.__w2eGoBack = goBack;
-  window.__w2eBuildTexasChiliScan = buildTexasChiliScan;
-  window.__w2eRunTexasChiliTests = runTexasChiliTests;
 }
 
 init();
