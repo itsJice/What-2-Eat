@@ -352,6 +352,7 @@ const loveFoodChips = document.querySelector("#loveFoodChips");
 const dontLoveFoodChips = document.querySelector("#dontLoveFoodChips");
 const healthNeedChips = document.querySelector("#healthNeedChips");
 const profileForm = document.querySelector("#profileForm");
+const profileAutosaveStatus = document.querySelector("#profileAutosaveStatus");
 const recommendationList = document.querySelector("#recommendationList");
 const savedMeals = document.querySelector("#savedMeals");
 const savedOrders = document.querySelector("#savedOrders");
@@ -363,6 +364,8 @@ const photoThumbs = document.querySelector("#photoThumbs");
 const nextFromCamera = document.querySelector("#nextFromCamera");
 const flashToggle = document.querySelector("#flashToggle");
 const scannerStatus = document.querySelector("#scannerStatus");
+const testMenuSelect = document.querySelector("#testMenuSelect");
+const runTestMenuButton = document.querySelector("#runTestMenu");
 const scanVerdictPrimary = document.querySelector("#scanVerdictPrimary");
 const scanVerdictSecondary = document.querySelector("#scanVerdictSecondary");
 const scanSafetyDisclaimer = document.querySelector("#scanSafetyDisclaimer");
@@ -530,7 +533,7 @@ function loadOcrLibrary() {
       script.async = true;
       script.dataset.ocrLoader = "true";
       script.onload = () => resolve(window.Tesseract);
-      script.onerror = () => reject(new Error("OCR library failed to load"));
+      script.onerror = () => reject(new Error("Backup text reader failed to load"));
       document.head.appendChild(script);
     });
   }
@@ -682,6 +685,9 @@ const avoidBiasKeywords = [
 ];
 
 const genericMenuSectionTitle = "Menu items";
+
+const allowedTestMenuIds = ["ihop", "menu-w", "olive-garden", "texas-roadhouse"];
+let testMenus = [];
 
 const texasChiliMenu = {
   title: "Texas Chili Restaurant",
@@ -1142,12 +1148,14 @@ function buildAiScanData(aiPayload, sourceLabel, sourceId) {
       sourceName: aiPayload.sourceName || sourceLabel,
       parserVersion: aiPayload.parserVersion || scanParserVersion,
       engineVersion: aiPayload.engineVersion || evaluated.engineVersion,
-      parserUsed: aiPayload.parserUsed || "openai-vision-ocr",
+      parserUsed: aiPayload.parserUsed || "openai-vision-evidence",
       confidence: items.some((item) => item.confidence === "Low") ? "Medium" : "High",
       failure: null,
-      sourceTruth: aiPayload.ocrCoverage?.checked ? "AI vision + backend Dine DNA engine + OCR coverage" : "AI vision + backend Dine DNA engine",
+      sourceTruth: aiPayload.explanationSource === "ai_rewrite"
+        ? "Menu scan + Dine DNA engine + polished guidance"
+        : "Menu scan + Dine DNA engine",
       foodEnrichment: aiPayload.foodEnrichment || null,
-      ocrCoverage: aiPayload.ocrCoverage || null,
+      scanCoverage: aiPayload.scanCoverage || aiPayload.ocrCoverage || null,
       title: evaluated.title || aiPayload.menu?.restaurantName || "Uploaded menu",
       rawText: "",
       sections,
@@ -1278,8 +1286,8 @@ function reconcileAiWithOcr(scanData, rawText, sourceLabel, sourceId) {
   if (ocrLines.length < 3) {
     return {
       ...scanData,
-      sourceTruth: "AI vision; OCR coverage was too thin to compare",
-      ocrCoverage: { checked: false, ocrLineCount: ocrLines.length, unsupportedAiCount: 0, ocrOnlyCount: 0 },
+      sourceTruth: "Menu scan + Dine DNA engine",
+      scanCoverage: { checked: false, lineCount: ocrLines.length, unsupportedItemCount: 0, textOnlyItemCount: 0 },
     };
   }
 
@@ -1306,8 +1314,8 @@ function reconcileAiWithOcr(scanData, rawText, sourceLabel, sourceId) {
           priceConflictCount += 1;
           nextMeal.confidence = lowerConfidence(nextMeal.confidence);
           nextMeal.score = Math.max(0, (nextMeal.score || 70) - 8);
-          nextMeal.confirm = uniqueList([...nextMeal.confirm, `Confirm price; AI read ${aiPrice}, OCR read ${ocrPrice}.`]);
-          nextMeal.notes = uniqueList([...nextMeal.notes, "AI layout is kept, but OCR saw a different price nearby."]);
+          nextMeal.confirm = uniqueList([...nextMeal.confirm, `Confirm the price; one scan pass read ${aiPrice}, another read ${ocrPrice}.`]);
+          nextMeal.notes = uniqueList([...nextMeal.notes, "The item looks usable, but the price needs a quick check."]);
         }
         return nextMeal;
       }
@@ -1315,8 +1323,6 @@ function reconcileAiWithOcr(scanData, rawText, sourceLabel, sourceId) {
       unsupportedAiCount += 1;
       nextMeal.confidence = lowerConfidence(nextMeal.confidence);
       nextMeal.score = Math.max(0, (nextMeal.score || 70) - 10);
-      nextMeal.confirm = uniqueList([...nextMeal.confirm, "Confirm item name and details; OCR did not clearly catch this line."]);
-      nextMeal.notes = uniqueList([...nextMeal.notes, "AI saw this in the image, but OCR coverage did not support it clearly."]);
       return nextMeal;
     }),
   }));
@@ -1325,39 +1331,22 @@ function reconcileAiWithOcr(scanData, rawText, sourceLabel, sourceId) {
   const ocrOnlyItems = ocrLines
     .filter((line) => !supportedOcrLines.has(line))
     .filter((line) => !allAiItems.some((meal) => scoreOcrLineAgainstMeal(line, meal) >= 0.62))
-    .slice(0, 8)
-    .map((line) => {
-      const meal = buildScanMealFromLine(line, scanData.title || sourceLabel);
-      const linePrice = extractComparablePrice(line);
-      return {
-        ...meal,
-        name: line.replace(/\s+\$\s?\d+(?:\.\d{2})?$/, "").trim(),
-        sourceTrace: "ocr-coverage",
-        confidence: "Low",
-        price: linePrice,
-        score: Math.max(0, (meal.score || 60) - 18),
-        summary: "OCR caught this line, but AI did not place it confidently in the menu.",
-        confirm: uniqueList([...meal.confirm, "Ask staff whether this item is actually available and confirm the printed name."]),
-        notes: uniqueList([...meal.notes, "Needs a second look because OCR saw it outside the AI-structured result."]),
-      };
-    });
+    .slice(0, 8);
 
-  const reconciledSections = ocrOnlyItems.length
-    ? [...sections, { title: "Needs a second look", items: ocrOnlyItems }]
-    : sections;
+  const reconciledSections = sections;
   const items = reconciledSections.flatMap((section) => section.items);
 
   return {
     ...scanData,
-    sourceTruth: "AI vision + OCR coverage check",
+    sourceTruth: "Menu scan + Dine DNA engine",
     sections: reconciledSections,
     items,
     recommendedOrder: buildRecommendedOrder(reconciledSections),
-    ocrCoverage: {
+    scanCoverage: {
       checked: true,
-      ocrLineCount: ocrLines.length,
-      unsupportedAiCount,
-      ocrOnlyCount: ocrOnlyItems.length,
+      lineCount: ocrLines.length,
+      unsupportedItemCount: unsupportedAiCount,
+      textOnlyItemCount: ocrOnlyItems.length,
       priceConflictCount,
     },
   };
@@ -1654,11 +1643,12 @@ function looksLikeTexasChiliSource(source, sourceLabel = "", rawText = "") {
 }
 
 function scanFailureResult(sourceLabel, reason = "Could not read enough real menu text.", debug = {}) {
+  const message = debug.message || `We could not read enough real menu text from ${sourceLabel}. Try a clearer photo or upload all menu pages again.`;
   return {
     sourceId: `scan-failed-${Date.now()}`,
     sourceName: sourceLabel,
     parserVersion: scanParserVersion,
-    parserUsed: debug.parserUsed || "ocr-generic",
+    parserUsed: debug.parserUsed || "backup-text-generic",
     confidence: "Low",
     title: "Scan failed",
     rawText: "",
@@ -1669,7 +1659,7 @@ function scanFailureResult(sourceLabel, reason = "Could not read enough real men
     failure: {
       title: "Scan failed",
       reason,
-      message: `We could not read enough real menu text from ${sourceLabel}. Try a clearer photo or upload all menu pages again.`,
+      message,
     },
   };
 }
@@ -1764,6 +1754,21 @@ function renderScanFailureHelp() {
   `;
 }
 
+function renderPdfScanFailureHelp() {
+  return `
+    <section class="scan-failure-help">
+      <h3>Use a menu PDF the scanner can read</h3>
+      <p>The live test needs the original PDF file and enough extractable menu text for the AI scanner to structure it.</p>
+      <ul>
+        <li>Make sure the imported PDF still exists on this machine.</li>
+        <li>Use a PDF that contains the actual restaurant menu, not a blocked website, login page, or error page.</li>
+        <li>If the PDF is image-only, upload the menu images through the normal scan flow.</li>
+      </ul>
+      <button class="primary-action" data-rescan-menu type="button">Choose another menu</button>
+    </section>
+  `;
+}
+
 function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "validated-ocr", options = {}) {
   const relaxedMode = options.relaxedMode === true;
   const rawLines = dedupeLines(
@@ -1790,8 +1795,8 @@ function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "vali
   const strongItems = detectedItems.filter(isStrongMenuItemLine);
   const hasStructure = detectedHeaders.length >= 1 || strongItems.length >= 4;
   if (usableLines.length < (relaxedMode ? 4 : 8) || !hasStructure) {
-    return scanFailureResult(sourceLabel, "OCR did not produce enough validated menu sections or item-like lines.", {
-      parserUsed: "ocr-generic",
+    return scanFailureResult(sourceLabel, "The backup text pass did not produce enough menu sections or item-like lines.", {
+      parserUsed: "backup-text-generic",
       rejectedLineCount: rejected.length + Math.max(rawLines.length - lines.length, 0),
     });
   }
@@ -1841,8 +1846,8 @@ function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "vali
   const items = sectionData.flatMap((section) => section.items);
 
   if (items.length < (relaxedMode ? 4 : 4)) {
-    return scanFailureResult(sourceLabel, "OCR found too few validated menu items to build a truthful menu.", {
-      parserUsed: "ocr-generic",
+    return scanFailureResult(sourceLabel, "The backup text pass found too few menu items to build a truthful menu.", {
+      parserUsed: "backup-text-generic",
       rejectedLineCount: rejected.length,
     });
   }
@@ -1851,7 +1856,7 @@ function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "vali
     sourceId,
     sourceName: sourceLabel,
     parserVersion: scanParserVersion,
-    parserUsed: "ocr-generic",
+    parserUsed: "backup-text-generic",
     confidence: detectedHeaders.length >= 2 ? "Medium" : "Low",
     failure: null,
     title,
@@ -1861,6 +1866,134 @@ function parseScanMeals(rawText, sourceLabel = "Uploaded menu", sourceId = "vali
     hasText: items.length > 0,
     rejectedLineCount: rejected.length,
   };
+}
+
+function populateTestMenus() {
+  if (!testMenuSelect) return;
+  testMenuSelect.innerHTML = `
+    <option value="">Choose a test menu</option>
+    ${testMenus.map((menu) => `<option value="${menu.id}">${menu.title}${menu.sourceFile ? " (live PDF)" : menu.scanPayload ? " (real scan)" : ""}</option>`).join("")}
+  `;
+}
+
+async function loadRealTestMenus() {
+  try {
+    const response = await fetch(`/data/test_menus.json?v=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const realMenus = await response.json();
+    if (!Array.isArray(realMenus) || !realMenus.length) return;
+    testMenus = allowedTestMenuIds
+      .map((id) => realMenus.find((menu) => menu?.id === id && menu?.title && menu.sourceFile))
+      .filter(Boolean);
+    populateTestMenus();
+  } catch {
+    // Real-world menu fixtures are optional; the dropdown stays empty if they are unavailable.
+  }
+}
+
+async function requestLiveTestMenuScan(menu) {
+  const response = await fetch(`/api/dev/test-menu-scan/${encodeURIComponent(menu.id)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ profile: state.profile }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(typeof payload.detail === "string" ? payload.detail : "Live AI scan failed.");
+  }
+  return payload;
+}
+
+async function runSelectedTestMenu() {
+  const menu = testMenus.find((item) => item.id === testMenuSelect?.value);
+  if (!menu) return;
+
+  const requestId = ++state.scanRequestId;
+  state.isScanInProgress = true;
+  state.eatReturnView = "scan-loading";
+  state.scanMeals = [];
+  state.scanSections = [];
+  state.scanOrder = [];
+  state.activeMenuCategory = "mains";
+  state.scanSearchQuery = "";
+  state.recommendedOrder = null;
+  state.scanMeta = null;
+  state.scanSource = null;
+  state.scanPhotos = [];
+  state.scanFiles = [];
+  state.scanInputs = [];
+  renderScanPhotos();
+
+  setScanLoadingState("preparing", {
+    progress: 0.18,
+    pageIndex: 1,
+    pageTotal: 1,
+    detail: menu.sourceFile ? "Loading the original PDF for a live AI scan." : "Loading the test menu.",
+  });
+  setView("scan-loading");
+  await delay(240);
+
+  if (requestId !== state.scanRequestId) return;
+
+  setScanLoadingState("building", {
+    progress: menu.sourceFile ? 0.42 : 0.82,
+    pageIndex: 1,
+    pageTotal: 1,
+    detail: menu.sourceFile ? "Sending this PDF through the AI menu scanner." : "Running this menu against your Dine DNA.",
+  });
+
+  let scanData;
+  try {
+    if (menu.sourceFile) {
+      const livePayload = await requestLiveTestMenuScan(menu);
+      menu.scanPayload = livePayload;
+      scanData = buildAiScanData(livePayload, menu.title, `test-menu-${menu.id}`);
+    } else if (menu.scanPayload) {
+      scanData = buildAiScanData(menu.scanPayload, menu.title, `test-menu-${menu.id}`);
+    } else {
+      scanData = parseScanMeals(menu.text, menu.title, `test-menu-${menu.id}`, { relaxedMode: true });
+    }
+  } catch (error) {
+    const reason = error.message || "Live AI scan failed.";
+    scanData = scanFailureResult(menu.title, error.message || "Live AI scan failed.", {
+      parserUsed: "openai-pdf-live",
+      sourceId: `test-menu-${menu.id}`,
+      message: menu.sourceFile
+        ? `The live test could not run from the original PDF. ${reason}`
+        : reason,
+    });
+  }
+  publishScanDebug(scanData, [], menu.title, menu.text || menu.sourceFile || "");
+
+  state.scanMeals = scanData.items || [];
+  state.scanSections = scanData.sections || [];
+  state.recommendedOrder = scanData.recommendedOrder || null;
+  state.scanMeta = {
+    sourceId: scanData.sourceId,
+    sourceName: scanData.sourceName,
+    parserVersion: scanData.parserVersion,
+    engineVersion: scanData.engineVersion || null,
+    parserUsed: scanData.parserUsed || (scanData.failure ? "test-menu-local" : null),
+    confidence: scanData.confidence,
+    title: scanData.title || menu.title,
+    failure: scanData.failure || null,
+    sourceTruth: "Test menu text",
+    counts: scanData.counts || null,
+    scanCoverage: scanData.scanCoverage || scanData.ocrCoverage || null,
+    rejectedLineCount: scanData.rejectedLineCount || 0,
+  };
+
+  renderScanResults();
+  setScanLoadingState("done", {
+    progress: 1,
+    pageIndex: 1,
+    pageTotal: 1,
+    detail: "Test menu is ready.",
+  });
+  state.isScanInProgress = false;
+  state.eatReturnView = "scan-results";
+  viewHistory[viewHistory.length - 1] = "scan-results";
+  setView("scan-results", { push: false });
 }
 
 async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
@@ -1939,14 +2072,14 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
           progress: 0.88,
           pageIndex: sources.length,
           pageTotal: sources.length,
-          detail: "Engine verdicts and OCR coverage notes are folded in.",
+          detail: "Final item guidance is being cleaned up.",
         });
       } catch (error) {
         setScanLoadingState("building", {
           progress: 0.58,
           pageIndex: sources.length,
           pageTotal: sources.length,
-          detail: "AI vision could not finish cleanly. Trying local OCR as backup.",
+          detail: "The first scan pass could not finish cleanly. Trying a backup text pass.",
         });
 
         const texts = await ocrCoveragePromise;
@@ -1955,7 +2088,7 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
           progress: 0.58 + combinedProgress * 0.24,
           pageIndex: sources.length,
           pageTotal: sources.length,
-          detail: "Using OCR backup to build the clearest menu we can.",
+          detail: "Using the backup text pass to build the clearest menu we can.",
         });
         await delay(500);
         rawText = texts.join("\n\n");
@@ -1965,14 +2098,14 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
             progress: 0.86,
             pageIndex: sources.length,
             pageTotal: sources.length,
-            detail: "OCR recognized the restaurant. Organizing the saved menu.",
+            detail: "Recognized the restaurant. Organizing the saved menu.",
           });
           scanData = buildTexasChiliScan();
         } else {
           scanData = parseScanMeals(rawText, sourceLabel, sourceId);
           if (scanData?.failure) {
             scanData = scanFailureResult(sourceLabel, friendlyAiScanFailure(error), {
-              parserUsed: "openai-vision-ocr",
+              parserUsed: "openai-vision-evidence",
               sourceId,
             });
           }
@@ -1998,7 +2131,7 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
       pageTotal: sources.length,
       detail: "Something went sideways, but we are still preparing a useful result.",
     });
-    scanData = scanFailureResult(sourceLabel, "OCR or menu parsing threw an error.");
+    scanData = scanFailureResult(sourceLabel, "The menu scan could not finish cleanly.");
   }
 
   if (requestId !== state.scanRequestId) {
@@ -2038,7 +2171,7 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
     failure: scanData.failure || null,
     sourceTruth: scanData.sourceTruth || null,
     counts: scanData.counts || null,
-    ocrCoverage: scanData.ocrCoverage || null,
+    scanCoverage: scanData.scanCoverage || scanData.ocrCoverage || null,
     rejectedLineCount: scanData.rejectedLineCount || 0,
   };
   renderScanResults();
@@ -2095,6 +2228,28 @@ function saveProfile() {
   } catch {
     // Keep the form usable even when browser storage is unavailable.
   }
+}
+
+let profileAutosaveTimer = null;
+
+function setProfileAutosaveStatus(message = "Saved automatically") {
+  if (!profileAutosaveStatus) return;
+  profileAutosaveStatus.textContent = message;
+  profileAutosaveStatus.dataset.state = message.toLowerCase().includes("saving") ? "saving" : "saved";
+}
+
+function persistProfileChange({ status = "Saved automatically" } = {}) {
+  saveProfile();
+  updateDashboard();
+  setProfileAutosaveStatus(status);
+}
+
+function scheduleProfileAutosave() {
+  setProfileAutosaveStatus("Saving...");
+  window.clearTimeout(profileAutosaveTimer);
+  profileAutosaveTimer = window.setTimeout(() => {
+    persistProfileChange();
+  }, 250);
 }
 
 function saveMeals() {
@@ -2319,6 +2474,11 @@ function avoidPerfectWorldMods(meal) {
 
 function cleanGuidanceText(item) {
   return String(item || "")
+    .replace(/^Confirm item name and details; OCR did not clearly catch this line\.$/, "")
+    .replace(/^AI saw this in the image, but OCR coverage did not support it clearly\.$/, "")
+    .replace(/^AI layout is kept, but OCR saw a different price nearby\.$/, "")
+    .replace(/^Needs a second look because OCR saw it outside the AI-structured result\.$/, "")
+    .replace(/^Ask staff whether this item is actually available and confirm the printed name\.$/, "")
     .replace(/^Ask about sauces, oils, and prep surface\.$/, "Double-check sauces, oils, and the prep surface.")
     .replace(/^Check for cross-contamination with gluten\.$/, "")
     .replace(/^Ask if gluten can touch it during prep\.$/, "")
@@ -2469,13 +2629,13 @@ function showActionToast(message, iconType = "plus") {
 
 function showSavedButtonFeedback(button) {
   if (!button) return;
-  const originalLabel = button.dataset.originalLabel || button.textContent.trim() || "Save Dine DNA";
+  const originalLabel = button.dataset.originalLabel || button.textContent.trim() || "Saved";
   button.dataset.originalLabel = originalLabel;
   window.clearTimeout(button.savedConfirmationTimer);
   button.textContent = "Saved";
   button.classList.add("saved-confirmation");
   button.savedConfirmationTimer = window.setTimeout(() => {
-    button.textContent = button.dataset.originalLabel || "Save Dine DNA";
+    button.textContent = button.dataset.originalLabel || "Saved";
     button.classList.remove("saved-confirmation");
   }, 1400);
 }
@@ -2762,7 +2922,11 @@ function renderScanResults() {
     if (scanVerdictPrimary) scanVerdictPrimary.textContent = state.scanMeta.failure.title;
     if (scanVerdictSecondary) scanVerdictSecondary.textContent = state.scanMeta.failure.message || "We couldn’t read enough clear menu text from that photo.";
     if (scanSafetyDisclaimer) scanSafetyDisclaimer.hidden = true;
-    if (menuSectionList) menuSectionList.innerHTML = renderScanFailureHelp();
+    if (menuSectionList) {
+      menuSectionList.innerHTML = state.scanMeta.parserUsed === "openai-pdf-live"
+        ? renderPdfScanFailureHelp()
+        : renderScanFailureHelp();
+    }
     renderScanOrder();
     return;
   }
@@ -3832,7 +3996,7 @@ function bindEvents() {
         }
       }
       renderDineDnaChips();
-      updateDashboard();
+      persistProfileChange();
       return;
     }
 
@@ -3923,6 +4087,15 @@ function bindEvents() {
 
   document.querySelector("#openScan")?.addEventListener("click", () => setView("scan"));
   document.querySelector("#openProductScan")?.addEventListener("click", () => setView("product-scan"));
+  runTestMenuButton?.addEventListener("click", runSelectedTestMenu);
+  testMenuSelect?.addEventListener("change", () => {
+    runTestMenuButton.disabled = !testMenuSelect.value;
+  });
+
+  document.querySelector("#userName")?.addEventListener("input", (event) => {
+    state.profile.userName = event.target.value.trim();
+    scheduleProfileAutosave();
+  });
 
   profileForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -3931,10 +4104,7 @@ function bindEvents() {
       ...state.profile,
       userName: formData.get("userName").trim(),
     };
-    saveProfile();
-    updateDashboard();
-    showSavedButtonFeedback(profileForm.querySelector("[type='submit']"));
-    showActionToast("Dine DNA saved", "check");
+    persistProfileChange();
   });
 
   document.querySelector("#capturePhoto").addEventListener("click", captureMenuPhoto);
@@ -4047,9 +4217,13 @@ function runTexasChiliTests() {
 
 function init() {
   loadState();
+  populateTestMenus();
+  loadRealTestMenus();
+  if (runTestMenuButton) runTestMenuButton.disabled = true;
   renderDineDnaChips();
   fillProfileForm();
   updateDashboard();
+  setProfileAutosaveStatus();
   renderRecommendations();
   renderRestaurants();
   renderSavedMeals();

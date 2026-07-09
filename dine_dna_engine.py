@@ -65,6 +65,62 @@ LOW_SCORE_HEALTH_TERMS = {
     "Low Sodium": ["bacon", "ham", "sausage", "soy sauce", "pickle"],
 }
 
+AI_RISK_ALIASES = {
+    "milk": "dairy",
+    "cream": "dairy",
+    "cheese": "dairy",
+    "butter": "dairy",
+    "dairy": "dairy",
+    "wheat": "gluten",
+    "gluten": "gluten",
+    "bread": "gluten",
+    "breaded": "gluten",
+    "bun": "gluten",
+    "pasta": "gluten",
+    "peanut": "peanuts",
+    "peanuts": "peanuts",
+    "tree nut": "tree_nuts",
+    "tree nuts": "tree_nuts",
+    "almond": "tree_nuts",
+    "walnut": "tree_nuts",
+    "shellfish": "shellfish",
+    "shrimp": "shellfish",
+    "fish": "fish",
+    "egg": "eggs",
+    "eggs": "eggs",
+    "soy": "soy",
+    "sesame": "sesame",
+    "pork": "pork",
+    "bacon": "pork",
+    "ham": "pork",
+    "beef": "beef",
+    "steak": "beef",
+    "chicken": "chicken",
+    "alcohol": "alcohol",
+    "wine": "alcohol",
+    "beer": "alcohol",
+    "caffeine": "caffeine",
+    "coffee": "caffeine",
+    "spicy": "spicy",
+    "chili": "spicy",
+    "garlic": "garlic",
+    "onion": "onions",
+    "onions": "onions",
+    "mushroom": "mushrooms",
+    "mushrooms": "mushrooms",
+    "corn": "corn",
+    "coconut": "coconut",
+    "fried": "fried",
+    "deep fried": "fried",
+    "fryer": "fried",
+    "shared fryer": "shared_fryer",
+    "cross contact": "shared_fryer",
+    "cross-contact": "shared_fryer",
+}
+
+AI_ROLES = {"core", "sauce", "topping", "side", "prep", "cross-contact risk", "unknown"}
+AI_CERTAINTY = {"high", "medium_high", "medium", "low", "supporting"}
+
 
 def load_knowledge() -> dict[str, Any]:
     return json.loads(KNOWLEDGE_PATH.read_text())
@@ -194,6 +250,56 @@ def find_evidence(item: dict[str, Any], enrichment_terms: list[str], profile: di
             "message": "Your profile asks to avoid shared fryers, so fried or breaded items need staff confirmation.",
         })
     return evidence
+
+
+def normalize_ai_risk(value: str) -> str:
+    text = normalize_text(value).replace("/", " ").strip()
+    if text in AI_RISK_ALIASES:
+        return AI_RISK_ALIASES[text]
+    for phrase, risk in sorted(AI_RISK_ALIASES.items(), key=lambda entry: len(entry[0]), reverse=True):
+        if phrase_in_text(normalize_text(phrase), text):
+            return risk
+    return text.replace(" ", "_")
+
+
+def ai_item_evidence(item: dict[str, Any], profile: dict[str, Any]) -> list[dict[str, Any]]:
+    evidence = []
+    seen = set()
+    for entry in item.get("aiEvidence") or []:
+        if not isinstance(entry, dict) or entry.get("type") == "ingredient":
+            continue
+        restriction = normalize_ai_risk(str(entry.get("restriction") or entry.get("term") or ""))
+        if restriction not in profile["risks"] and restriction != "shared_fryer" and not (profile["avoidSharedFryers"] and restriction == "fried"):
+            continue
+        term = str(entry.get("term") or entry.get("restriction") or restriction).strip()
+        role = str(entry.get("role") or "unknown").strip().lower()
+        certainty = str(entry.get("certainty") or "medium").strip().lower()
+        key = (normalize_text(term), restriction, role)
+        if key in seen:
+            continue
+        seen.add(key)
+        evidence.append({
+            "source": "ai_evidence",
+            "term": normalize_text(term) or restriction,
+            "canonical": normalize_text(term) or restriction,
+            "restriction": restriction,
+            "role": role if role in AI_ROLES else "unknown",
+            "certainty": certainty if certainty in AI_CERTAINTY else "medium",
+            "message": str(entry.get("message") or f"{term or restriction} may conflict with {restriction}.").strip(),
+        })
+    return evidence
+
+
+def merge_evidence(internal_evidence: list[dict[str, Any]], ai_evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged = []
+    seen = set()
+    for ev in [*internal_evidence, *ai_evidence]:
+        key = (ev.get("term"), ev.get("restriction"), ev.get("role"))
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(ev)
+    return merged
 
 
 def menu_has_safe_swap(menu_text: str, risk: str, role: str) -> bool:
@@ -378,7 +484,10 @@ def evaluate_menu(
         for item in section.get("items", []):
             source_item = deepcopy(item)
             support = (ocr_support or {}).get(source_item.get("name"), "unchecked")
-            evidence = find_evidence(source_item, terms, normalized_profile, knowledge)
+            evidence = merge_evidence(
+                find_evidence(source_item, terms, normalized_profile, knowledge),
+                ai_item_evidence(source_item, normalized_profile),
+            )
             category = decide_category(evidence, menu_text, normalized_profile)
             instructions = instructions_for(source_item, category, evidence, menu_text)
             score = score_item(source_item, category, normalized_profile)
@@ -398,9 +507,6 @@ def evaluate_menu(
                 "ingredients": [source_item.get("description") or source_item.get("name") or ""],
                 "tags": [ev.get("canonical") for ev in evidence if ev.get("canonical")],
             }
-            if support == "unsupported":
-                evaluated["confirm"] = unique([*evaluated["confirm"], "Confirm item name and details; OCR did not clearly catch this line."])
-                evaluated["notes"] = unique([*evaluated["notes"], "AI saw this in the image, but OCR coverage did not support it clearly."])
             items.append(evaluated)
         items.sort(key=lambda item: (STATUS_RANK.get(item["category"], 9), -(item.get("score") or 0), item.get("name") or ""))
         sections.append({"title": section.get("name") or section.get("title") or "Menu", "items": items})

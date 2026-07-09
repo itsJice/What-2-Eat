@@ -132,6 +132,16 @@
                 </button>
               </div>
 
+              <div class="test-menu-panel" aria-label="Test menus">
+                <label for="testMenuSelect">Test menu</label>
+                <div class="test-menu-controls">
+                  <select id="testMenuSelect">
+                    <option value="">Choose a sample menu</option>
+                  </select>
+                  <button class="secondary-action" id="runTestMenu" type="button">Run</button>
+                </div>
+              </div>
+
             </div>
           </section>
 
@@ -289,7 +299,7 @@
                 <div class="chip-grid" id="healthNeedChips"></div>
               </fieldset>
 
-              <button class="primary-action" type="submit">Save Dine DNA</button>
+              <p class="autosave-status" id="profileAutosaveStatus" aria-live="polite">Saved automatically</p>
             </form>
           </section>
         </main>

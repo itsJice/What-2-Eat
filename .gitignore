@@ -2,3 +2,4 @@
 .env
 .ai_usage.json
 __pycache__/
+.DS_Store
