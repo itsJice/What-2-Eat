@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -264,23 +265,18 @@ Final engine output:
 
 
 def call_openai_explanation_rewrite(evaluated_menu: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is not set.")
-    response = requests.post(
-        OPENAI_RESPONSES_URL,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={
+    # Non-fatal by design: rewrite_final_explanations catches every failure
+    # and falls back to the engine-written text.
+    return request_openai_json(
+        {
             "model": os.getenv("OPENAI_REWRITE_MODEL", os.getenv("OPENAI_MODEL", "gpt-4.1-mini")),
             "input": [{"role": "user", "content": [{"type": "input_text", "text": build_rewrite_prompt(evaluated_menu, profile)}]}],
             "temperature": 0,
             "max_output_tokens": int_env("AI_REWRITE_MAX_OUTPUT_TOKENS", "3500"),
         },
-        timeout=45,
+        timeout=int_env("AI_REWRITE_TIMEOUT_SECONDS", "45"),
+        attempts=int_env("AI_REWRITE_MAX_ATTEMPTS", "2"),
     )
-    if response.status_code >= 400:
-        raise RuntimeError(response.text[:500] or f"Rewrite failed with {response.status_code}.")
-    return parse_json_text(extract_response_text(response.json()))
 
 
 def apply_explanation_rewrite(evaluated_menu: dict[str, Any], rewrite: dict[str, Any]) -> dict[str, Any]:
@@ -410,18 +406,172 @@ def extract_response_text(payload: dict[str, Any]) -> str:
     return "\n".join(parts).strip()
 
 
-def parse_json_text(text: str) -> dict[str, Any]:
-    cleaned = text.strip()
+def strip_json_wrapping(text: str) -> str:
+    cleaned = str(text or "").strip()
     cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
     cleaned = re.sub(r"\s*```$", "", cleaned)
     start = cleaned.find("{")
+    if start > 0:
+        cleaned = cleaned[start:]
+    return cleaned
+
+
+def repair_json_text(text: str) -> dict[str, Any] | None:
+    """Best-effort mechanical repair of near-miss AI JSON (trailing commas,
+    prose around the object, or output truncated mid-structure)."""
+    cleaned = strip_json_wrapping(text)
+    if not cleaned.startswith("{"):
+        return None
+
+    # Attempt 1: slice to the outermost braces.
+    end = cleaned.rfind("}")
+    if end > 0:
+        candidate = cleaned[: end + 1]
+        for variant in (candidate, re.sub(r",\s*([}\]])", r"\1", candidate)):
+            try:
+                parsed = json.loads(variant)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+
+    # Attempt 2: truncated output. Close whatever is open and parse; if that
+    # fails, chop back to the previous structural boundary and try again.
+    def close_and_parse(fragment: str) -> dict[str, Any] | None:
+        stack: list[str] = []
+        in_string = False
+        escaped = False
+        for char in fragment:
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+            if char == '"':
+                in_string = True
+            elif char in "{[":
+                stack.append("}" if char == "{" else "]")
+            elif char in "}]" and stack:
+                stack.pop()
+        candidate = fragment + ('"' if in_string else "") + "".join(reversed(stack))
+        candidate = re.sub(r",\s*([}\]])", r"\1", candidate)
+        try:
+            parsed = json.loads(candidate)
+            return parsed if isinstance(parsed, dict) else None
+        except json.JSONDecodeError:
+            return None
+
+    fragment = cleaned
+    for _ in range(60):
+        parsed = close_and_parse(fragment)
+        if parsed is not None:
+            return parsed
+        boundary = max(fragment.rfind(","), fragment.rfind("{"), fragment.rfind("["))
+        if boundary <= 0:
+            return None
+        fragment = fragment[:boundary].rstrip()
+    return None
+
+
+def try_parse_json_text(text: str) -> dict[str, Any] | None:
+    cleaned = strip_json_wrapping(text)
+    start = cleaned.find("{")
     end = cleaned.rfind("}")
     if start == -1 or end == -1 or end <= start:
-        raise HTTPException(status_code=502, detail="AI did not return JSON.")
+        return repair_json_text(text)
     try:
-        return json.loads(cleaned[start : end + 1])
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=502, detail="AI returned invalid JSON.") from exc
+        parsed = json.loads(cleaned[start : end + 1])
+        return parsed if isinstance(parsed, dict) else repair_json_text(text)
+    except json.JSONDecodeError:
+        return repair_json_text(text)
+
+
+def parse_json_text(text: str) -> dict[str, Any]:
+    parsed = try_parse_json_text(text)
+    if parsed is None:
+        raise HTTPException(status_code=502, detail="AI returned invalid JSON.")
+    return parsed
+
+
+def response_is_incomplete(payload: dict[str, Any]) -> bool:
+    return str(payload.get("status") or "").lower() == "incomplete"
+
+
+JSON_RETRY_REMINDER = (
+    "IMPORTANT: Your previous reply was not valid JSON. Reply with ONLY the complete, "
+    "valid JSON object described above. No prose, no code fences, no explanations."
+)
+
+
+def request_openai_json(body: dict[str, Any], *, timeout: int = 90, attempts: int | None = None) -> dict[str, Any]:
+    """POST to the OpenAI Responses API and return parsed JSON output.
+
+    Handles, with bounded retries: connection errors and timeouts, provider
+    429/5xx, invalid JSON output (mechanical repair, then a strengthened
+    re-ask), and output truncated by max_output_tokens (retried with a
+    bigger budget). Raises HTTPException with a short, honest detail string
+    when the attempts are exhausted."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not set yet.")
+    attempts = max(1, attempts if attempts is not None else int_env("AI_CALL_MAX_ATTEMPTS", "3"))
+    backoff_base = money_env("AI_RETRY_BACKOFF_SECONDS", "1.0")
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    body = json.loads(json.dumps(body))
+    reminded = False
+    salvaged: dict[str, Any] | None = None
+    last_detail = "The AI menu reader did not answer in time. Please try the scan again."
+    for attempt in range(1, attempts + 1):
+        try:
+            response = requests.post(OPENAI_RESPONSES_URL, headers=headers, json=body, timeout=timeout)
+        except requests.exceptions.RequestException:
+            last_detail = "Could not reach the AI menu reader. Check the connection and try again."
+            if attempt < attempts:
+                time.sleep(min(backoff_base * attempt, 4))
+            continue
+        if response.status_code in (401, 403):
+            raise HTTPException(status_code=503, detail="The AI provider rejected the server's API key.")
+        if response.status_code == 429 or response.status_code >= 500:
+            last_detail = "The AI menu reader is busy right now. Please try again in a moment."
+            if attempt < attempts:
+                time.sleep(min(backoff_base * attempt, 4))
+            continue
+        if response.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"The AI provider rejected the request (HTTP {response.status_code}).")
+        try:
+            payload = response.json()
+        except ValueError:
+            last_detail = "The AI menu reader sent back an unreadable reply."
+            continue
+        parsed = try_parse_json_text(extract_response_text(payload))
+        if response_is_incomplete(payload):
+            # Output ran out of token budget mid-JSON. A mechanical repair of a
+            # cut-off reply loses everything after the cut, so prefer a retry
+            # with more room; keep the salvage only as a last resort.
+            if parsed is not None:
+                salvaged = parsed
+            current_max = int(body.get("max_output_tokens") or 9000)
+            body["max_output_tokens"] = min(current_max * 2, int_env("AI_MAX_OUTPUT_TOKENS_CEILING", "16000"))
+            last_detail = "The menu was too large to read in one pass. Please try again or scan fewer pages at once."
+            continue
+        if parsed is not None:
+            return parsed
+        if not reminded:
+            # Model replied with prose or broken JSON: re-ask once, more firmly.
+            reminded = True
+            try:
+                body["input"][0]["content"][0]["text"] += "\n\n" + JSON_RETRY_REMINDER
+            except (KeyError, IndexError, TypeError):
+                pass
+            last_detail = "The AI menu reader returned an unreadable menu. Please try the scan again."
+        else:
+            last_detail = "The AI menu reader returned an unreadable menu. Please try the scan again."
+    if salvaged is not None:
+        return salvaged
+    raise HTTPException(status_code=502, detail=last_detail)
 
 
 def looks_like_pdf_text_artifact(value: str) -> bool:
@@ -567,12 +717,25 @@ def normalize_ai_evidence_list(item: dict[str, Any]) -> list[dict[str, str]]:
 
 
 def normalize_menu(menu: dict[str, Any]) -> dict[str, Any]:
+    # Tolerate structurally wrong AI output: skip non-dict sections, wrap
+    # bare-string items, default missing section names. A malformed reply
+    # must degrade to 422, never crash to a 500.
+    if not isinstance(menu, dict):
+        raise HTTPException(status_code=422, detail="AI could not find structured menu sections and items.")
     restaurant = str(menu.get("restaurantName") or "Uploaded menu").strip() or "Uploaded menu"
+    raw_sections = menu.get("sections")
     sections = []
-    for section in menu.get("sections", []):
-        name = str(section.get("name") or "").strip()
+    for section in raw_sections if isinstance(raw_sections, list) else []:
+        if not isinstance(section, dict):
+            continue
+        name = str(section.get("name") or section.get("title") or "").strip()
+        raw_items = section.get("items")
         items = []
-        for item in section.get("items", []):
+        for item in raw_items if isinstance(raw_items, list) else []:
+            if isinstance(item, str):
+                item = {"name": item}
+            if not isinstance(item, dict):
+                continue
             item_name = clean_menu_item_name(str(item.get("name") or "").strip())
             if len(item_name) < 2:
                 continue
@@ -585,16 +748,17 @@ def normalize_menu(menu: dict[str, Any]) -> dict[str, Any]:
             if ai_evidence:
                 normalized_item["aiEvidence"] = ai_evidence
             items.append(normalized_item)
-        if name and items:
-            sections.append({"name": name, "items": items})
+        if items:
+            sections.append({"name": name or "Menu", "items": items})
 
     if not sections:
         raise HTTPException(status_code=422, detail="AI could not find structured menu sections and items.")
 
+    raw_notes = menu.get("restaurantNotes")
     return {
         "restaurantName": restaurant,
         "sections": sections,
-        "restaurantNotes": [str(note).strip() for note in menu.get("restaurantNotes", []) if str(note).strip()],
+        "restaurantNotes": [str(note).strip() for note in (raw_notes if isinstance(raw_notes, list) else []) if str(note).strip()],
     }
 
 
@@ -957,6 +1121,30 @@ def mock_menu() -> dict[str, Any]:
     }
 
 
+def condense_backup_text(text: str, limit: int = 12000) -> str:
+    """Compact backup OCR/PDF text for the vision prompt: collapse whitespace,
+    dedupe repeated lines, and if it still exceeds the limit, cut at a line
+    boundary with an explicit marker instead of a silent mid-word slice."""
+    lines: list[str] = []
+    seen: set[str] = set()
+    for raw_line in str(text or "").splitlines():
+        line = " ".join(raw_line.split())
+        if not line:
+            continue
+        key = line.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        lines.append(line)
+    condensed = "\n".join(lines)
+    if len(condensed) <= limit:
+        return condensed
+    cut = condensed.rfind("\n", 0, limit)
+    if cut <= 0:
+        cut = limit
+    return condensed[:cut] + "\n[Backup text truncated here. The uploaded images remain the source of truth.]"
+
+
 def build_prompt(ocr_text: str, profile_json: str, filenames: list[str], pdf_text: str = "") -> str:
     return f"""
 You are extracting a restaurant menu for What 2 Eat.
@@ -1009,34 +1197,25 @@ Rules:
 Uploaded filenames: {', '.join(filenames)}
 Profile JSON is not for menu judgment. Ignore it for safety decisions: {profile_json[:1200]}
 OCR backup text:
-{ocr_text[:12000]}
+{condense_backup_text(ocr_text)}
 
 PDF extracted text:
-{pdf_text[:12000]}
+{condense_backup_text(pdf_text)}
 """.strip()
 
 
 def call_openai(images: list[dict[str, str]], ocr_text: str, profile_json: str, filenames: list[str], pdf_text: str = "") -> dict[str, Any]:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not set yet.")
-
     content: list[dict[str, Any]] = [{"type": "input_text", "text": build_prompt(ocr_text, profile_json, filenames, pdf_text)}]
     content.extend({"type": "input_image", "image_url": image["dataUrl"]} for image in images)
-    response = requests.post(
-        OPENAI_RESPONSES_URL,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={
+    return request_openai_json(
+        {
             "model": os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
             "input": [{"role": "user", "content": content}],
             "temperature": 0,
             "max_output_tokens": int_env("AI_IMAGE_MAX_OUTPUT_TOKENS", "9000"),
         },
-        timeout=90,
+        timeout=int_env("AI_IMAGE_TIMEOUT_SECONDS", "90"),
     )
-    if response.status_code >= 400:
-        raise HTTPException(status_code=response.status_code, detail=response.text[:1000])
-    return parse_json_text(extract_response_text(response.json()))
 
 
 def clean_pdf_menu_text(text: str) -> str:
@@ -1123,24 +1302,15 @@ Messy menu text:
 
 
 def call_openai_pdf_fallback(title: str, filename: str, pdf_text: str) -> dict[str, Any]:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not set yet.")
-
-    response = requests.post(
-        OPENAI_RESPONSES_URL,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={
+    return request_openai_json(
+        {
             "model": os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
             "input": [{"role": "user", "content": [{"type": "input_text", "text": build_fallback_pdf_prompt(title, filename, pdf_text)}]}],
             "temperature": 0,
             "max_output_tokens": int_env("AI_PDF_MAX_OUTPUT_TOKENS", "9000"),
         },
-        timeout=90,
+        timeout=int_env("AI_PDF_TIMEOUT_SECONDS", "90"),
     )
-    if response.status_code >= 400:
-        raise HTTPException(status_code=response.status_code, detail=response.text[:1000])
-    return parse_json_text(extract_response_text(response.json()))
 
 
 def chunk_pdf_menu_text(text: str, max_chars: int = 6500) -> list[str]:
@@ -1210,6 +1380,38 @@ def extract_pdf_menu_with_ai(title: str, filename: str, pdf_text: str) -> dict[s
     return normalize_menu(merge_extracted_menus(title, extracted))
 
 
+def extract_menu_from_image_batches(
+    images: list[dict[str, str]],
+    ocr_text: str,
+    profile_json: str,
+    filenames: list[str],
+    pdf_text: str,
+    fallback_title: str,
+) -> dict[str, Any]:
+    """Read many menu pages in batches and merge, so one oversized request
+    never truncates mid-JSON. Single small uploads take the direct path."""
+    batch_size = max(1, int_env("AI_IMAGE_BATCH_SIZE", "3"))
+    if len(images) <= batch_size:
+        return call_openai(images, ocr_text, profile_json, filenames, pdf_text)
+
+    menus: list[dict[str, Any]] = []
+    failures: list[HTTPException] = []
+    for start in range(0, len(images), batch_size):
+        batch = images[start : start + batch_size]
+        batch_names = filenames[start : start + batch_size] or filenames
+        try:
+            menus.append(call_openai(batch, ocr_text, profile_json, batch_names, pdf_text))
+        except HTTPException as exc:
+            failures.append(exc)
+    if not menus:
+        raise failures[0] if failures else HTTPException(status_code=422, detail="AI could not find structured menu sections and items.")
+    title = next(
+        (str(menu.get("restaurantName") or "").strip() for menu in menus if str(menu.get("restaurantName") or "").strip()),
+        fallback_title,
+    )
+    return merge_extracted_menus(title, menus)
+
+
 def extract_menu_with_ai(
     images: list[dict[str, str]],
     ocr_text: str,
@@ -1223,7 +1425,8 @@ def extract_menu_with_ai(
         menu = extract_pdf_menu_with_ai(fallback_title, filename, pdf_text)
         return menu, "openai-pdf-text-fallback"
     try:
-        return normalize_menu(call_openai(images, ocr_text, profile_json, filenames, pdf_text)), "openai-vision-evidence"
+        menu = extract_menu_from_image_batches(images, ocr_text, profile_json, filenames, pdf_text, fallback_title)
+        return normalize_menu(menu), "openai-vision-evidence"
     except HTTPException:
         if images or not pdf_text:
             raise
