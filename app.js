@@ -540,19 +540,76 @@ function loadOcrLibrary() {
   return ocrScriptPromise;
 }
 
+function withTimeout(promise, ms, fallbackValue) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      if (fallbackValue === undefined) {
+        reject(new Error("Timed out"));
+      } else {
+        resolve(fallbackValue);
+      }
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function downscaleForOcr(source, maxSide = 1600) {
+  const image = new Image();
+  const objectUrl = source instanceof File ? URL.createObjectURL(source) : null;
+  try {
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("Could not decode image"));
+      image.src = objectUrl || source;
+    });
+    const scale = Math.min(1, maxSide / Math.max(image.naturalWidth || 1, image.naturalHeight || 1));
+    if (scale >= 1) return source;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(image.naturalWidth * scale);
+    canvas.height = Math.round(image.naturalHeight * scale);
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return source;
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
+}
+
 async function extractMenuText(source, onProgress) {
   if (source instanceof File && source.type === "application/pdf") {
     return "";
   }
-  const Tesseract = await loadOcrLibrary();
-  const result = await Tesseract.recognize(source, "eng", {
-    logger: (message) => {
-      if (message.status === "recognizing text" && typeof message.progress === "number") {
-        onProgress?.(message.progress);
-      }
-    },
-  });
-  return result?.data?.text || "";
+  // OCR is backup coverage only — the backend AI vision call is the primary
+  // reader. A blocked CDN or a slow page must never stall or fail the scan,
+  // so the whole OCR pass is bounded and failure degrades to "".
+  const ocrBudgetMs = 25000;
+  try {
+    const Tesseract = await withTimeout(loadOcrLibrary(), 8000);
+    const prepared = await downscaleForOcr(source);
+    const result = await withTimeout(
+      Tesseract.recognize(prepared, "eng", {
+        logger: (message) => {
+          if (message.status === "recognizing text" && typeof message.progress === "number") {
+            onProgress?.(message.progress);
+          }
+        },
+      }),
+      ocrBudgetMs,
+    );
+    return result?.data?.text || "";
+  } catch {
+    return "";
+  }
 }
 
 const menuSectionHeaders = new Set([
@@ -3551,26 +3608,18 @@ function resetScanRun() {
 }
 
 function captureMenuPhoto() {
-  if (cameraPreview.videoWidth && cameraPreview.videoHeight) {
-    const canvas = document.createElement("canvas");
-    canvas.width = cameraPreview.videoWidth;
-    canvas.height = cameraPreview.videoHeight;
-    const context = canvas.getContext("2d");
-    context.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
-    const source = canvas.toDataURL("image/jpeg", 0.8);
-    addScanPhoto(source);
-    state.scanSource = state.scanPhotos;
+  if (!cameraPreview.videoWidth || !cameraPreview.videoHeight) {
+    // Never fabricate a photo: an empty camera frame is an error, not a menu.
+    scannerStatus.textContent = "Camera isn't ready yet. Give it a second, or add the photo from your library.";
     return;
   }
-
-  const placeholder = `data:image/svg+xml,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="240" height="180" viewBox="0 0 240 180">
-      <rect width="240" height="180" fill="#d9f5df"/>
-      <rect x="36" y="34" width="168" height="112" rx="12" fill="#ffffff"/>
-      <path d="M64 66h112M64 92h112M64 118h72" stroke="#20a464" stroke-width="8" stroke-linecap="round"/>
-    </svg>
-  `)}`;
-  addScanPhoto(placeholder);
+  const canvas = document.createElement("canvas");
+  canvas.width = cameraPreview.videoWidth;
+  canvas.height = cameraPreview.videoHeight;
+  const context = canvas.getContext("2d");
+  context.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
+  const source = canvas.toDataURL("image/jpeg", 0.8);
+  addScanPhoto(source);
   state.scanSource = state.scanPhotos;
 }
 

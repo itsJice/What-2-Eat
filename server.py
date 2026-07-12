@@ -368,7 +368,76 @@ def build_scan_response(
     }
 
 
+OPENAI_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+ACCEPTED_IMAGE_MIMES = OPENAI_IMAGE_MIMES | {"image/heic", "image/heif", "image/tiff", "image/bmp"}
+IMAGE_EXTENSION_MIMES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".heic": "image/heic",
+    ".heif": "image/heif",
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
+    ".bmp": "image/bmp",
+}
+
+
+def normalize_upload_image(data: bytes, mime: str) -> tuple[bytes, str]:
+    """Re-encode an uploaded image as a bounded JPEG: fixes EXIF rotation,
+    converts HEIC/TIFF/BMP to a format the AI provider accepts, and downscales
+    huge phone photos. Falls back to the original bytes when Pillow cannot
+    decode but the format is already provider-safe."""
+    try:
+        from PIL import Image, ImageOps
+
+        try:
+            import pillow_heif
+
+            pillow_heif.register_heif_opener()
+        except ImportError:  # pragma: no cover - HEIF support is optional at runtime.
+            pass
+
+        import io
+
+        with Image.open(io.BytesIO(data)) as image:
+            image = ImageOps.exif_transpose(image)
+            max_side = int_env("AI_IMAGE_MAX_SIDE_PX", "2000")
+            if max(image.size) > max_side:
+                image.thumbnail((max_side, max_side))
+            if image.mode not in ("RGB", "L"):
+                image = image.convert("RGB")
+            buffer = io.BytesIO()
+            image.save(buffer, format="JPEG", quality=82)
+            return buffer.getvalue(), "image/jpeg"
+    except Exception:
+        if mime in OPENAI_IMAGE_MIMES:
+            return data, mime
+        raise HTTPException(
+            status_code=415,
+            detail="One of the photos is in a format we could not read. Please retake it as a regular photo (JPEG/PNG) and try again.",
+        )
+
+
+def resolve_upload_mime(filename: str, content_type: str) -> str:
+    mime = (content_type or "").lower().split(";")[0].strip()
+    if mime in ACCEPTED_IMAGE_MIMES or mime == "application/pdf":
+        return mime
+    extension = Path(filename.lower()).suffix
+    if extension == ".pdf":
+        return "application/pdf"
+    return IMAGE_EXTENSION_MIMES.get(extension, mime or "application/octet-stream")
+
+
 async def read_uploads(files: list[UploadFile]) -> dict[str, Any]:
+    max_files = int_env("AI_MAX_UPLOAD_FILES", "12")
+    max_file_mb = int_env("AI_MAX_UPLOAD_MB", "15")
+    if len(files) > max_files:
+        raise HTTPException(
+            status_code=413,
+            detail=f"That's more than {max_files} menu pages in one scan. Please scan the menu in smaller batches.",
+        )
     images = []
     filenames = []
     pdf_text_parts = []
@@ -377,18 +446,30 @@ async def read_uploads(files: list[UploadFile]) -> dict[str, Any]:
         if not data:
             continue
         filename = file.filename or "menu-file"
-        filenames.append(filename)
-        content_type = file.content_type or "application/octet-stream"
-        if content_type == "application/pdf" or filename.lower().endswith(".pdf"):
+        if len(data) > max_file_mb * 1024 * 1024:
+            raise HTTPException(
+                status_code=413,
+                detail=f"{filename} is larger than {max_file_mb} MB. Please use a smaller photo or PDF.",
+            )
+        mime = resolve_upload_mime(filename, file.content_type)
+        if mime == "application/pdf":
+            filenames.append(filename)
             pdf_text = extract_pdf_text(data)
             if pdf_text:
                 pdf_text_parts.append(f"PDF text from {filename}:\n{pdf_text}")
             continue
+        if mime not in ACCEPTED_IMAGE_MIMES:
+            raise HTTPException(
+                status_code=415,
+                detail=f"{filename} is not a photo or PDF we can read. Please upload menu photos (JPEG/PNG/HEIC) or a PDF.",
+            )
+        filenames.append(filename)
+        normalized_data, normalized_mime = normalize_upload_image(data, mime)
         images.append(
             {
                 "filename": filename,
-                "mime": content_type,
-                "dataUrl": f"data:{content_type};base64,{base64.b64encode(data).decode('ascii')}",
+                "mime": normalized_mime,
+                "dataUrl": f"data:{normalized_mime};base64,{base64.b64encode(normalized_data).decode('ascii')}",
             }
         )
     return {"images": images, "filenames": filenames, "pdfText": "\n\n".join(pdf_text_parts)}
