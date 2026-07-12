@@ -908,6 +908,43 @@ h3 {
   backdrop-filter: blur(12px);
 }
 
+.bottom-clear {
+  position: absolute;
+  right: 1.15rem;
+  bottom: 8.6rem;
+  display: grid;
+  width: auto;
+  height: auto;
+  gap: 0.3rem;
+  border-radius: 0;
+  background: transparent;
+  color: #ffffff;
+  text-align: center;
+  font-size: 0.72rem;
+}
+
+.bottom-clear svg {
+  width: 2.35rem;
+  height: 2.35rem;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.13);
+  padding: 0.58rem;
+  backdrop-filter: blur(12px);
+}
+
+.bottom-clear[hidden] {
+  display: none;
+}
+
+.scan-usage-status {
+  margin: 0.4rem 0 0;
+  text-align: center;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.72);
+  min-height: 1rem;
+}
+
 .scanner-tool input {
   position: absolute;
   width: 1px;

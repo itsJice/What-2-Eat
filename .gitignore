@@ -3,3 +3,5 @@
 .ai_usage.json
 __pycache__/
 .DS_Store
+.ai_usage.json.lock
+.ai_usage.json.tmp

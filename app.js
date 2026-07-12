@@ -259,6 +259,7 @@ const ocrScriptUrl = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract
 let ocrScriptPromise = null;
 const scanParserVersion = "texas-chili-scan-3";
 const aiScanApiUrl = window.location.port === "5191" ? "http://127.0.0.1:8000/api/scan-menu" : "/api/scan-menu";
+const healthApiUrl = window.location.port === "5191" ? "http://127.0.0.1:8000/api/health" : "/api/health";
 const openFoodFactsApiUrl = window.location.port === "5191"
   ? "http://127.0.0.1:8000/api/open-food-facts/product"
   : "/api/open-food-facts/product";
@@ -360,6 +361,8 @@ const restaurantList = document.querySelector("#restaurantList");
 const cameraPreview = document.querySelector("#cameraPreview");
 const cameraFallback = document.querySelector("#cameraFallback");
 const photoCount = document.querySelector("#photoCount");
+const clearPhotosButton = document.querySelector("#clearPhotos");
+const scanUsageStatus = document.querySelector("#scanUsageStatus");
 const photoThumbs = document.querySelector("#photoThumbs");
 const nextFromCamera = document.querySelector("#nextFromCamera");
 const flashToggle = document.querySelector("#flashToggle");
@@ -1887,6 +1890,7 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
     rejectedLineCount: scanData.rejectedLineCount || 0,
   };
   renderScanResults();
+  refreshScanUsageStatus();
   setScanLoadingState("done", {
     progress: 1,
     pageIndex: sources.length,
@@ -2010,6 +2014,7 @@ function setView(viewId, options = {}) {
 
   if (viewId === "scan") {
     startCamera();
+    refreshScanUsageStatus();
   } else {
     stopCamera();
   }
@@ -3566,7 +3571,10 @@ function renderScanPhotos() {
   const count = state.scanPhotos.length;
   photoCount.textContent = count;
   nextFromCamera.disabled = count === 0;
-  scannerStatus.textContent = "Ready for next scan.";
+  scannerStatus.textContent = count
+    ? `${count} page${count === 1 ? "" : "s"} ready. Add more or tap ✓ to scan.`
+    : "Ready for next scan.";
+  if (clearPhotosButton) clearPhotosButton.hidden = count === 0;
   photoThumbs.innerHTML = count
     ? `
       <div class="photo-thumb">
@@ -3575,6 +3583,39 @@ function renderScanPhotos() {
       </div>
     `
     : `<div class="photo-thumb empty-thumb"></div>`;
+}
+
+function formatUsd(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
+
+function renderScanUsageStatus(info) {
+  if (!scanUsageStatus) return;
+  if (!info) {
+    scanUsageStatus.textContent = "";
+    return;
+  }
+  if (info.mockMode) {
+    scanUsageStatus.textContent = "Practice mode: scans are free and use a sample menu.";
+    return;
+  }
+  const scans = Number(info.scanCount || 0);
+  const spent = Number(info.estimatedSpendUsd || 0);
+  const cap = Number(info.monthlyBudgetUsd || 0);
+  scanUsageStatus.textContent = cap
+    ? `${scans} scan${scans === 1 ? "" : "s"} this month · about ${formatUsd(spent)} of ${formatUsd(cap)} used`
+    : `${scans} scan${scans === 1 ? "" : "s"} this month`;
+}
+
+async function refreshScanUsageStatus() {
+  if (!scanUsageStatus) return;
+  try {
+    const response = await fetch(healthApiUrl);
+    if (!response.ok) return;
+    renderScanUsageStatus(await response.json());
+  } catch {
+    // Status line is informational only; never block scanning on it.
+  }
 }
 
 function addScanPhoto(source, file = null) {
@@ -3812,6 +3853,15 @@ function bindEvents() {
   });
 
   document.querySelector("#capturePhoto").addEventListener("click", captureMenuPhoto);
+
+  clearPhotosButton?.addEventListener("click", () => {
+    state.scanPhotos = [];
+    state.scanFiles = [];
+    state.scanInputs = [];
+    state.scanSource = null;
+    renderScanPhotos();
+    scannerStatus.textContent = "Photos cleared. Ready for a fresh scan.";
+  });
 
   flashToggle?.setAttribute("aria-pressed", "false");
   flashToggle?.addEventListener("click", () => {

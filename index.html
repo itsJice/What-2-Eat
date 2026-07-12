@@ -19,7 +19,7 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="assets/logo-icon.png?v=new-logo-1" type="image/png" />
     <link rel="apple-touch-icon" href="/assets/app-icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=nutri-guide-copy-1" />
+    <link rel="stylesheet" href="styles.css?v=mvp-polish-1" />
   </head>
   <body>
     <div class="phone-shell">
@@ -130,6 +130,14 @@
                   </svg>
                   <span>Flash</span>
                 </button>
+                <button class="scanner-tool bottom-clear" id="clearPhotos" type="button" aria-label="Clear photos" hidden>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  </svg>
+                  <span>Clear</span>
+                </button>
               </div>
 
               <div class="test-menu-panel" aria-label="Test menus">
@@ -141,6 +149,8 @@
                   <button class="secondary-action" id="runTestMenu" type="button">Run</button>
                 </div>
               </div>
+
+              <p class="scan-usage-status" id="scanUsageStatus" aria-live="polite"></p>
 
             </div>
           </section>
@@ -330,6 +340,6 @@
       </div>
     </div>
 
-    <script src="app.js?v=nutri-guide-copy-1"></script>
+    <script src="app.js?v=mvp-polish-1"></script>
   </body>
 </html>

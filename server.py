@@ -1,9 +1,15 @@
 import base64
+import contextvars
 import json
 import os
 import re
 import time
 from datetime import datetime, timezone
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - non-POSIX platforms fall back to unlocked writes.
+    fcntl = None
 from pathlib import Path
 from typing import Any
 
@@ -81,7 +87,65 @@ def read_usage() -> dict[str, Any]:
 
 
 def write_usage(data: dict[str, Any]) -> None:
-    USAGE_FILE.write_text(json.dumps(data, indent=2, sort_keys=True))
+    # Write-then-rename so a crash mid-write can never corrupt the file.
+    tmp_file = USAGE_FILE.with_name(USAGE_FILE.name + ".tmp")
+    tmp_file.write_text(json.dumps(data, indent=2, sort_keys=True))
+    os.replace(tmp_file, USAGE_FILE)
+
+
+# Actual token usage reported by the AI provider is accumulated per request
+# via this context variable, so nested/retried calls all get counted.
+AI_USAGE_TRACKER: contextvars.ContextVar[list[dict[str, int]] | None] = contextvars.ContextVar("ai_usage_tracker", default=None)
+
+
+def track_ai_usage(payload: dict[str, Any]) -> None:
+    tracker = AI_USAGE_TRACKER.get()
+    if tracker is None:
+        return
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return
+    tracker.append(
+        {
+            "inputTokens": int(usage.get("input_tokens") or 0),
+            "outputTokens": int(usage.get("output_tokens") or 0),
+        }
+    )
+
+
+def estimate_tracked_cost(entries: list[dict[str, int]]) -> float:
+    """Convert real token counts into dollars using per-model env pricing.
+    Defaults match gpt-4.1-mini list pricing."""
+    input_per_million = money_env("AI_INPUT_COST_PER_1M_USD", "0.40")
+    output_per_million = money_env("AI_OUTPUT_COST_PER_1M_USD", "1.60")
+    input_tokens = sum(entry.get("inputTokens", 0) for entry in entries)
+    output_tokens = sum(entry.get("outputTokens", 0) for entry in entries)
+    return round((input_tokens * input_per_million + output_tokens * output_per_million) / 1_000_000, 6)
+
+
+def record_scan_usage(charge: float) -> dict[str, Any]:
+    """Atomically add one scan + its real cost to the monthly usage file.
+    Returns the updated month bucket. File locking prevents concurrent scans
+    from dropping counts; the write itself is atomic via rename."""
+    month = current_month()
+
+    def apply() -> dict[str, Any]:
+        usage = read_usage()
+        month_usage = usage.setdefault("months", {}).setdefault(month, {"estimatedSpendUsd": 0.0, "scans": 0})
+        month_usage["estimatedSpendUsd"] = round(float(month_usage.get("estimatedSpendUsd", 0.0)) + charge, 6)
+        month_usage["scans"] = int(month_usage.get("scans", 0)) + 1
+        write_usage(usage)
+        return month_usage
+
+    if fcntl is None:
+        return apply()
+    lock_file = USAGE_FILE.with_name(USAGE_FILE.name + ".lock")
+    with open(lock_file, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            return apply()
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def check_budget() -> tuple[dict[str, Any], str, float, float, float]:
@@ -122,13 +186,6 @@ def health_payload() -> dict[str, Any]:
         "estimatedSpendUsd": float(month_usage.get("estimatedSpendUsd", 0.0)),
         "scanCount": int(month_usage.get("scans", 0)),
     }
-
-
-def record_usage(usage: dict[str, Any], month: str, charge: float) -> None:
-    month_usage = usage.setdefault("months", {}).setdefault(month, {"estimatedSpendUsd": 0.0, "scans": 0})
-    month_usage["estimatedSpendUsd"] = round(float(month_usage.get("estimatedSpendUsd", 0.0)) + charge, 4)
-    month_usage["scans"] = int(month_usage.get("scans", 0)) + 1
-    write_usage(usage)
 
 
 def extract_pdf_text(data: bytes) -> str:
@@ -627,6 +684,7 @@ def request_openai_json(body: dict[str, Any], *, timeout: int = 90, attempts: in
         except ValueError:
             last_detail = "The AI menu reader sent back an unreadable reply."
             continue
+        track_ai_usage(payload)
         parsed = try_parse_json_text(extract_response_text(payload))
         if response_is_incomplete(payload):
             # Output ran out of token budget mid-JSON. A mechanical repair of a
@@ -1531,30 +1589,56 @@ async def scan_menu(
     pdf_text = upload_data["pdfText"]
     profile = parse_profile_json(profile_json)
     usage, month, spent, monthly_cap, max_per_scan = check_budget()
-    if os.getenv("AI_SCAN_MOCK", "0") == "1":
-        menu = normalize_menu(mock_menu())
-        parser_used = "ai-mock"
-        estimated_charge = 0.0
-    else:
-        if not images and not pdf_text:
-            raise HTTPException(status_code=400, detail="No readable image or PDF menu text was uploaded.")
-        menu, parser_used = extract_menu_with_ai(images, ocr_text, profile_json, filenames, pdf_text, source_label)
-        estimated_charge = max_per_scan
-        record_usage(usage, month, estimated_charge)
+    tracker: list[dict[str, int]] = []
+    tracker_token = AI_USAGE_TRACKER.set(tracker)
+    try:
+        mock_mode = os.getenv("AI_SCAN_MOCK", "0") == "1"
+        if mock_mode:
+            menu = normalize_menu(mock_menu())
+            parser_used = "ai-mock"
+        else:
+            if not images and not pdf_text:
+                raise HTTPException(status_code=400, detail="No readable image or PDF menu text was uploaded.")
+            menu, parser_used = extract_menu_with_ai(images, ocr_text, profile_json, filenames, pdf_text, source_label)
 
-    return build_scan_response(
-        menu=menu,
-        profile=profile,
-        source_label=source_label,
-        source_id=source_id,
-        parser_used=parser_used,
-        estimated_charge=estimated_charge,
-        month=month,
-        spent=spent,
-        monthly_cap=monthly_cap,
-        ocr_text=ocr_text,
-        pdf_text=pdf_text,
-    )
+        response = build_scan_response(
+            menu=menu,
+            profile=profile,
+            source_label=source_label,
+            source_id=source_id,
+            parser_used=parser_used,
+            estimated_charge=0.0,
+            month=month,
+            spent=spent,
+            monthly_cap=monthly_cap,
+            ocr_text=ocr_text,
+            pdf_text=pdf_text,
+        )
+    finally:
+        AI_USAGE_TRACKER.reset(tracker_token)
+
+    # Charge what the provider actually reported (extraction + rewrite calls);
+    # fall back to the per-scan estimate if the provider sent no usage data.
+    if mock_mode:
+        estimated_charge = 0.0
+        month_usage = {"estimatedSpendUsd": spent, "scans": int(read_usage().get("months", {}).get(month, {}).get("scans", 0))}
+    else:
+        estimated_charge = estimate_tracked_cost(tracker) if tracker else max_per_scan
+        month_usage = record_scan_usage(estimated_charge)
+    response["budget"] = {
+        "month": month,
+        "monthlyCapUsd": monthly_cap,
+        "estimatedSpentBeforeUsd": spent,
+        "estimatedChargeUsd": estimated_charge,
+        "estimatedSpentUsd": float(month_usage.get("estimatedSpendUsd", spent)),
+        "scanCount": int(month_usage.get("scans", 0)),
+        "tokenUsage": {
+            "inputTokens": sum(entry.get("inputTokens", 0) for entry in tracker),
+            "outputTokens": sum(entry.get("outputTokens", 0) for entry in tracker),
+            "aiCalls": len(tracker),
+        },
+    }
+    return response
 
 
 @app.post("/api/food-enrich")
