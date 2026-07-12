@@ -1267,6 +1267,14 @@ function friendlyAiScanFailure(error) {
   if (lower.includes("503") || lower.includes("not set")) {
     return "The AI scanner is not fully connected yet. Check the .env file and restart the server.";
   }
+  if (lower.includes("budget")) {
+    return message;
+  }
+  // The backend already writes honest, user-ready failure messages; pass
+  // those through instead of wrapping them in tech-speak.
+  if (/^(the|could not|please|we)/i.test(message.trim())) {
+    return `${message.slice(0, 220)} You can also retake the photo with less glare, or upload the menu pages from your library.`;
+  }
   return `The AI scanner failed before it could build the menu. ${message.slice(0, 220)}`;
 }
 
@@ -1763,59 +1771,90 @@ async function analyzeMenuSource(source, sourceLabel = "Uploaded menu") {
   let rawText = "";
   try {
     {
+      // Progress is tied to what is actually happening: local photo reading
+      // reports real per-page progress; the AI stage shows honest elapsed
+      // time instead of invented percentages.
       const ocrProgress = Array(sources.length).fill(0);
+      let ocrStageActive = true;
       const updateOcrProgress = (index, progress) => {
         ocrProgress[index] = Math.max(ocrProgress[index], Math.max(0, Math.min(1, progress || 0)));
+        if (!ocrStageActive || requestId !== state.scanRequestId) return;
+        const average = ocrProgress.reduce((total, value) => total + value, 0) / Math.max(ocrProgress.length, 1);
+        setScanLoadingState("scanning", {
+          progress: 0.05 + average * 0.3,
+          pageIndex: Math.min(sources.length, ocrProgress.filter((value) => value >= 1).length + 1),
+          pageTotal: sources.length,
+          detail: sources.length > 1
+            ? `Reading the photo text — ${Math.round(average * 100)}% across ${sources.length} pages.`
+            : `Reading the photo text — ${Math.round(average * 100)}%.`,
+        });
       };
       const ocrCoveragePromise = Promise.all(
         sources.map((item, index) =>
           extractMenuText(item, (progress) => updateOcrProgress(index, progress)).catch(() => ""),
         ),
       );
+      let aiTicker = null;
+      const stopAiTicker = () => {
+        if (aiTicker) {
+          clearInterval(aiTicker);
+          aiTicker = null;
+        }
+      };
       try {
         scannerStatus.textContent = "Understanding the menu with AI...";
         setScanLoadingState("scanning", {
-          progress: 0.24,
+          progress: 0.05,
           pageIndex: 1,
           pageTotal: sources.length,
-          detail: sources.length > 1
-            ? `Reading ${sources.length} pages before the decision engine runs.`
-            : "Reading the menu before the decision engine runs.",
+          detail: "Reading the photo text before the AI pass.",
         });
         rawText = (await ocrCoveragePromise).join("\n\n");
+        ocrStageActive = false;
+        const aiStart = Date.now();
+        setScanLoadingState("matching", {
+          progress: 0.35,
+          pageIndex: sources.length,
+          pageTotal: sources.length,
+          detail: "The AI is reading the menu now. This usually takes 15–45 seconds.",
+        });
+        aiTicker = setInterval(() => {
+          if (requestId !== state.scanRequestId) {
+            stopAiTicker();
+            return;
+          }
+          const seconds = Math.round((Date.now() - aiStart) / 1000);
+          setScanLoadingState("matching", {
+            progress: Math.min(0.85, 0.35 + 0.5 * (1 - Math.exp(-seconds / 25))),
+            pageIndex: sources.length,
+            pageTotal: sources.length,
+            detail: seconds < 45
+              ? `The AI is reading the menu — ${seconds}s in. This usually takes 15–45 seconds.`
+              : `Still working — ${seconds}s. Large menus can take a little longer.`,
+          });
+        }, 1000);
         scanData = await requestAiMenuScan(sources, sourceLabel, sourceId, rawText);
+        stopAiTicker();
         if (scanData?.failure) {
           throw new Error(scanData.failure.reason || "AI vision did not return enough structured menu items.");
         }
-        setScanLoadingState("matching", {
-          progress: 0.74,
-          pageIndex: sources.length,
-          pageTotal: sources.length,
-          detail: "The backend Dine DNA engine is making the item decisions.",
-        });
         setScanLoadingState("building", {
-          progress: 0.88,
+          progress: 0.92,
           pageIndex: sources.length,
           pageTotal: sources.length,
-          detail: "Final item guidance is being cleaned up.",
+          detail: "The Dine DNA engine matched the items — cleaning up the guidance.",
         });
       } catch (error) {
+        stopAiTicker();
+        ocrStageActive = false;
         setScanLoadingState("building", {
-          progress: 0.58,
+          progress: 0.6,
           pageIndex: sources.length,
           pageTotal: sources.length,
-          detail: "The first scan pass could not finish cleanly. Trying a backup text pass.",
+          detail: "The AI pass could not finish. Building a local best-effort read from the photo text instead.",
         });
 
         const texts = await ocrCoveragePromise;
-        const combinedProgress = ocrProgress.reduce((total, item) => total + item, 0) / Math.max(ocrProgress.length, 1);
-        setScanLoadingState("scanning", {
-          progress: 0.58 + combinedProgress * 0.24,
-          pageIndex: sources.length,
-          pageTotal: sources.length,
-          detail: "Using the backup text pass to build the clearest menu we can.",
-        });
-        await delay(500);
         rawText = texts.join("\n\n");
 
         scanData = parseScanMeals(rawText, sourceLabel, sourceId);
@@ -2507,6 +2546,48 @@ function simpleScanStatusCounts(counts) {
   };
 }
 
+function renderConfidenceChip(meal) {
+  const confidence = String(meal.confidence || "").toLowerCase();
+  if (!confidence) return "";
+  const labels = { high: "High confidence", medium: "Medium confidence", low: "Low confidence — double-check" };
+  const label = labels[confidence];
+  if (!label) return "";
+  return `<span class="confidence-chip confidence-${confidence}">${label}</span>`;
+}
+
+function isLocalFallbackScan() {
+  return String(state.scanMeta?.parserUsed || "").startsWith("backup-text");
+}
+
+function scanProvenanceBanner() {
+  if (!isLocalFallbackScan()) return "";
+  return `
+    <div class="scan-coverage-note scan-provenance-note">
+      <strong>Best-effort read.</strong> The AI scan couldn't finish, so this list comes from reading the photo text locally.
+      Details may be incomplete or wrong — please confirm every item with restaurant staff before ordering.
+    </div>
+  `;
+}
+
+function scanCoverageBanner() {
+  const coverage = state.scanMeta?.scanCoverage;
+  if (!coverage) return "";
+  if (!coverage.checked) {
+    return `
+      <div class="scan-coverage-note">
+        We couldn't cross-check this menu against the photo text, so treat item details as a starting point and confirm with staff.
+      </div>
+    `;
+  }
+  const flagged = Number(coverage.unsupportedItemCount || 0);
+  const priceConflicts = Number(coverage.priceConflictCount || 0);
+  const parts = [];
+  if (flagged) parts.push(`${flagged} item${flagged === 1 ? "" : "s"} couldn't be matched to the photo text — confirm those on the printed menu`);
+  if (priceConflicts) parts.push(`${priceConflicts} price${priceConflicts === 1 ? " looks" : "s look"} different in the photo — confirm before ordering`);
+  if (!parts.length) return "";
+  return `<div class="scan-coverage-note">${parts.join(". ")}.</div>`;
+}
+
 function renderSectionCountChips(items) {
   const counts = simpleScanStatusCounts(scanSectionStatusCounts(items));
   return `
@@ -2593,6 +2674,7 @@ function showOrderReview() {
       <h2>Read this to the waiter</h2>
       <div class="waiter-script">${waiterOrderText().replace(/\n/g, "<br>")}</div>
       <div class="order-review-actions">
+        <button class="secondary-action" data-server-mode type="button">Server Mode — show your phone</button>
         <button class="secondary-action" data-save-current-order type="button">Add order to saved meals</button>
         <button class="primary-action" data-order-done type="button">Done</button>
       </div>
@@ -2600,6 +2682,28 @@ function showOrderReview() {
   `;
   shell.appendChild(sheet);
   window.setTimeout(() => sheet.classList.add("show"), 20);
+}
+
+function showServerMode(text) {
+  const script = String(text || waiterOrderText() || "").trim();
+  if (!script) return;
+  document.querySelector(".server-mode-overlay")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "server-mode-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "Server mode: large-text order");
+  overlay.innerHTML = `
+    <div class="server-mode-content">
+      <p class="server-mode-kicker">My order, please:</p>
+      <div class="server-mode-script">${script.replace(/\n/g, "<br>")}</div>
+      <p class="server-mode-footer">I have dietary restrictions — thank you for double-checking. Cross-contamination may still be possible.</p>
+    </div>
+    <button class="server-mode-close" type="button">Tap anywhere to close</button>
+  `;
+  overlay.addEventListener("click", () => overlay.remove());
+  document.body.appendChild(overlay);
+  window.setTimeout(() => overlay.classList.add("show"), 20);
 }
 
 function showAiRecommendation() {
@@ -2678,7 +2782,9 @@ function renderScanResults() {
   if (scanMenuTitle) scanMenuTitle.textContent = state.scanMeta?.title || "Menu scan";
 
   if (scanVerdictPrimary) {
-    if (safeCount && !avoidCount) {
+    if (isLocalFallbackScan()) {
+      scanVerdictPrimary.textContent = "We built a quick local read of the menu text — treat it as a starting point.";
+    } else if (safeCount && !avoidCount) {
       scanVerdictPrimary.textContent = "We read the menu and found solid options without edits.";
     } else if (safeCount || modifyCount) {
       scanVerdictPrimary.textContent = "We read the menu. You have options, and some need simple edits.";
@@ -2694,7 +2800,7 @@ function renderScanResults() {
 
   if (menuSectionList) {
     const visibleSections = state.scanSections;
-    menuSectionList.innerHTML = state.scanSections.length
+    menuSectionList.innerHTML = scanProvenanceBanner() + scanCoverageBanner() + (state.scanSections.length
       ? `${visibleSections.length
         ? visibleSections
           .map((section) => ({ section, items: orderedScanItems(section.items) }))
@@ -2722,12 +2828,21 @@ function renderScanResults() {
                       return `
                         <article class="scan-item-card">
                           <div class="meal-header">
-                            <span class="status-pill ${statusClass(category)}">${mealCategoryLabel(category)}</span>
+                            <div class="meal-pills">
+                              <span class="status-pill ${statusClass(category)}">${mealCategoryLabel(category)}</span>
+                              ${renderConfidenceChip(meal)}
+                            </div>
                             <h3>${meal.name}</h3>
                             <p>${scanItemDescription(meal)}</p>
                           </div>
                           ${renderScanItemGuidance(meal, category)}
                           <div class="card-actions">
+                            <button class="icon-button scan-action-button" data-copy="${meal.name}" type="button" aria-label="Copy order instructions">
+                              ${renderActionIcon("copy")}
+                            </button>
+                            <button class="icon-button scan-action-button" data-save="${meal.name}" type="button" aria-label="Save meal">
+                              ${renderActionIcon("save")}
+                            </button>
                             <button class="icon-button scan-action-button" data-add-order="${meal.name}" type="button" aria-label="Add to order">
                               ${renderActionIcon("plus")}
                             </button>
@@ -2742,7 +2857,7 @@ function renderScanResults() {
           )
           .join("") || `<div class="empty-state">No menu options listed or found in the scan.</div>`
         : `<div class="empty-state">No menu options listed or found in the scan.</div>`}`
-      : `<div class="empty-state">We could not split this menu into sections, but the items are still below.</div>`;
+      : `<div class="empty-state">We could not split this menu into sections, but the items are still below.</div>`);
   }
 
   renderScanOrder();
@@ -2831,6 +2946,9 @@ function renderSavedOrders() {
             </div>
           </div>
           <div class="card-actions">
+            <button class="icon-button" data-server-order="${order.id}" type="button" aria-label="Show to server in large text">
+              ${renderActionIcon("check")}
+            </button>
             <button class="icon-button" data-copy-order="${order.id}" type="button" aria-label="Copy saved order">
               ${renderActionIcon("copy")}
             </button>
@@ -3786,6 +3904,19 @@ function bindEvents() {
     const closeReviewButton = event.target.closest("[data-close-order-review]");
     if (closeReviewButton) {
       closeOrderReview();
+      return;
+    }
+
+    const serverModeButton = event.target.closest("[data-server-mode]");
+    if (serverModeButton) {
+      showServerMode();
+      return;
+    }
+
+    const serverOrderButton = event.target.closest("[data-server-order]");
+    if (serverOrderButton) {
+      const order = state.savedOrders.find((entry) => entry.id === serverOrderButton.dataset.serverOrder);
+      if (order) showServerMode((order.notes || []).join("\n"));
       return;
     }
 
