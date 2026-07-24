@@ -565,9 +565,8 @@ h3 {
 .menu-section summary strong {
   min-width: 0;
   font-size: 1.12rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .menu-section summary span {
@@ -641,10 +640,9 @@ h3 {
 }
 
 .scan-item-card .card-actions {
-  position: absolute;
-  right: 0.68rem;
-  bottom: 0.68rem;
-  margin-top: 0;
+  position: static;
+  justify-content: flex-end;
+  margin-top: 0.7rem;
 }
 
 .scan-item-card .scan-action-button {
@@ -2540,13 +2538,29 @@ textarea {
 }
 
 .confidence-medium {
+  background: rgba(101, 113, 127, 0.12);
+  color: #55616e;
+}
+
+.confidence-low {
   background: rgba(240, 173, 45, 0.16);
   color: #9a6b0c;
 }
 
-.confidence-low {
-  background: rgba(228, 87, 87, 0.14);
-  color: #b03636;
+.order-instructions.safe-simple {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.7rem;
+  background: rgba(32, 164, 100, 0.08);
+  color: #157a4a;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.section-count.is-zero {
+  opacity: 0.35;
 }
 
 .scan-coverage-note {

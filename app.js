@@ -1255,9 +1255,23 @@ function readableApiError(errorText) {
   return errorText;
 }
 
+function isNetworkFetchError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  return (
+    error instanceof TypeError ||
+    message.includes("failed to fetch") ||
+    message.includes("networkerror") ||
+    message.includes("load failed") ||
+    message.includes("connection")
+  );
+}
+
 function friendlyAiScanFailure(error) {
   const message = String(error?.message || error || "");
   const lower = message.toLowerCase();
+  if (isNetworkFetchError(error)) {
+    return "The connection dropped while the menu was being read — the menu itself was probably fine. Keep the app open and try the scan again.";
+  }
   if (lower.includes("429") || lower.includes("too many requests") || lower.includes("quota") || lower.includes("rate limit")) {
     return "The AI scanner was reached, but OpenAI blocked the request because of a rate limit, quota, billing, or usage-limit setting. Check billing and usage limits, then try again in a minute.";
   }
@@ -1308,7 +1322,22 @@ async function requestAiMenuScan(sources, sourceLabel, sourceId, rawText) {
   formData.append("source_label", sourceLabel || "Uploaded menu");
   formData.append("source_id", sourceId || "");
 
-  const response = await fetch(aiScanApiUrl, { method: "POST", body: formData });
+  // A menu scan can run for a minute or more; a brief network wobble
+  // (screen lock, cell handoff, dropped keep-alive) shouldn't kill it.
+  // Retry once on pure network failures before giving up.
+  let response;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      response = await fetch(aiScanApiUrl, { method: "POST", body: formData });
+      break;
+    } catch (error) {
+      if (attempt >= 2 || !isNetworkFetchError(error)) throw error;
+      setScanLoadingState("scanning", {
+        detail: "The connection hiccuped — retrying the scan.",
+      });
+      await delay(2000);
+    }
+  }
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(readableApiError(errorText || `AI scan failed with ${response.status}`));
@@ -1486,6 +1515,20 @@ function publishScanDebug(scanData, source, sourceLabel, rawText = "") {
 }
 
 function renderScanFailureHelp() {
+  const failureText = `${state.scanMeta?.failure?.reason || ""} ${state.scanMeta?.failure?.message || ""}`.toLowerCase();
+  if (failureText.includes("connection")) {
+    return `
+      <section class="scan-failure-help">
+        <h3>The connection dropped mid-scan</h3>
+        <p>Your menu photos were fine — the network gave out while the AI was reading them. This can happen when the screen locks or the signal dips.</p>
+        <ul>
+          <li>Keep the app open while the scan runs.</li>
+          <li>Check your connection, then scan again.</li>
+        </ul>
+        <button class="primary-action" data-rescan-menu type="button">Rescan menu</button>
+      </section>
+    `;
+  }
   return `
     <section class="scan-failure-help">
       <h3>Let’s try that scan again</h3>
@@ -2025,9 +2068,14 @@ function saveOrders() {
 
 function addToScanOrder(mealName, kind = "main") {
   const meal = state.scanMeals.find((item) => item.name === mealName) || findMeal(mealName);
-  if (!meal) return;
+  if (!meal) return false;
+  if (state.scanOrder.some((item) => item.name === meal.name)) {
+    showActionToast("Already in your order", "check");
+    return false;
+  }
   state.scanOrder = [...state.scanOrder, { name: meal.name, kind, category: meal.status || "safe", meal }];
   renderScanOrder();
+  return true;
 }
 
 function removeFromScanOrder(index) {
@@ -2301,13 +2349,21 @@ function renderScanItemGuidance(meal, category) {
     `;
   }
 
+  const checks = profileSpecificChecks(meal);
+  const mods = modificationSteps(meal);
+  const notes = friendlyNotes(meal);
+  const onlyFillerNotes = notes.every((note) => /no (direct )?conflicts?\b/i.test(note));
+  if (category === "safe" && !checks.length && !mods.length && onlyFillerNotes) {
+    // A clean safe item needs one calm line, not an instruction box.
+    return `<div class="order-instructions safe-simple">✓ Nothing to change — order it as printed.</div>`;
+  }
   return `
     <div class="order-instructions">
       <strong>How to order it</strong>
       <div class="instruction-grid">
-        ${instructionBlock("Double-check", profileSpecificChecks(meal))}
-        ${instructionBlock("Make it work", modificationSteps(meal))}
-        ${instructionBlock("Good to know", friendlyNotes(meal))}
+        ${instructionBlock("Double-check", checks)}
+        ${instructionBlock("Make it work", mods)}
+        ${instructionBlock("Good to know", notes)}
       </div>
     </div>
   `;
@@ -2549,7 +2605,7 @@ function simpleScanStatusCounts(counts) {
 function renderConfidenceChip(meal) {
   const confidence = String(meal.confidence || "").toLowerCase();
   if (!confidence) return "";
-  const labels = { high: "High confidence", medium: "Medium confidence", low: "Low confidence — double-check" };
+  const labels = { high: "High confidence", medium: "Medium confidence", low: "Unverified — double-check" };
   const label = labels[confidence];
   if (!label) return "";
   return `<span class="confidence-chip confidence-${confidence}">${label}</span>`;
@@ -2572,29 +2628,33 @@ function scanProvenanceBanner() {
 function scanCoverageBanner() {
   const coverage = state.scanMeta?.scanCoverage;
   if (!coverage) return "";
+  const isPdfScan = /pdf/i.test(state.scanMeta?.parserUsed || "");
+  const sourceText = isPdfScan ? "the PDF text" : "the photo text";
   if (!coverage.checked) {
     return `
       <div class="scan-coverage-note">
-        We couldn't cross-check this menu against the photo text, so treat item details as a starting point and confirm with staff.
+        We couldn't cross-check this menu against ${sourceText}, so treat item details as a starting point and confirm with staff.
       </div>
     `;
   }
   const flagged = Number(coverage.unsupportedItemCount || 0);
   const priceConflicts = Number(coverage.priceConflictCount || 0);
   const parts = [];
-  if (flagged) parts.push(`${flagged} item${flagged === 1 ? "" : "s"} couldn't be matched to the photo text — confirm those on the printed menu`);
-  if (priceConflicts) parts.push(`${priceConflicts} price${priceConflicts === 1 ? " looks" : "s look"} different in the photo — confirm before ordering`);
+  if (flagged) parts.push(`${flagged} item${flagged === 1 ? "" : "s"} couldn't be matched to ${sourceText} — confirm those on the printed menu`);
+  if (priceConflicts) parts.push(`${priceConflicts} price${priceConflicts === 1 ? " looks" : "s look"} different in ${isPdfScan ? "the PDF" : "the photo"} — confirm before ordering`);
   if (!parts.length) return "";
   return `<div class="scan-coverage-note">${parts.join(". ")}.</div>`;
 }
 
 function renderSectionCountChips(items) {
   const counts = simpleScanStatusCounts(scanSectionStatusCounts(items));
+  const chip = (value, statusName, title) =>
+    `<span class="section-count ${statusName}${value ? "" : " is-zero"}" title="${title}">${value}</span>`;
   return `
     <div class="section-count-chips" aria-label="Section fit counts">
-      <span class="section-count status-safe" title="Good to order as-is">${counts.safe}</span>
-      <span class="section-count status-modify" title="Safe with modifications">${counts.modify}</span>
-      <span class="section-count status-avoid" title="Not safe">${counts.avoid}</span>
+      ${chip(counts.safe, "status-safe", "Good to order as-is")}
+      ${chip(counts.modify, "status-modify", "Safe with modifications")}
+      ${chip(counts.avoid, "status-avoid", "Not safe")}
     </div>
   `;
 }
@@ -2724,6 +2784,10 @@ function showAiRecommendation() {
         <p>${recommended.summary}</p>
         ${recommended.instructions?.length ? `<ul>${recommended.instructions.map((item) => `<li>${item}</li>`).join("")}</ul>` : ""}
       </div>
+      ${recommended.unavailable ? "" : `
+      <div class="order-review-actions">
+        <button class="primary-action" data-add-recommended type="button">Add to my order</button>
+      </div>`}
     </div>
   `;
   shell.appendChild(sheet);
@@ -2843,9 +2907,10 @@ function renderScanResults() {
                             <button class="icon-button scan-action-button" data-save="${meal.name}" type="button" aria-label="Save meal">
                               ${renderActionIcon("save")}
                             </button>
+                            ${category === "avoid" ? "" : `
                             <button class="icon-button scan-action-button" data-add-order="${meal.name}" type="button" aria-label="Add to order">
                               ${renderActionIcon("plus")}
-                            </button>
+                            </button>`}
                           </div>
                         </article>
                       `;
@@ -3871,8 +3936,9 @@ function bindEvents() {
 
     const addOrderButton = event.target.closest("[data-add-order]");
     if (addOrderButton) {
-      addToScanOrder(addOrderButton.dataset.addOrder, "main");
-      showActionToast("Added to order", "plus");
+      if (addToScanOrder(addOrderButton.dataset.addOrder, "main")) {
+        showActionToast("Added to order", "plus");
+      }
       return;
     }
 
@@ -3910,6 +3976,18 @@ function bindEvents() {
     const serverModeButton = event.target.closest("[data-server-mode]");
     if (serverModeButton) {
       showServerMode();
+      return;
+    }
+
+    const addRecommendedButton = event.target.closest("[data-add-recommended]");
+    if (addRecommendedButton) {
+      const recommended = state.recommendedOrder;
+      const names = recommended?.items?.length
+        ? recommended.items.map((item) => item.name).filter(Boolean)
+        : [recommended?.name].filter(Boolean);
+      const added = names.filter((name) => addToScanOrder(name, "main"));
+      closeOrderReview();
+      if (added.length) showActionToast("Added to order", "plus");
       return;
     }
 
