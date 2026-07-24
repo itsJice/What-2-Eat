@@ -498,6 +498,7 @@ async def read_uploads(files: list[UploadFile]) -> dict[str, Any]:
     images = []
     filenames = []
     pdf_text_parts = []
+    pdf_files = []
     for file in files:
         data = await file.read()
         if not data:
@@ -511,6 +512,7 @@ async def read_uploads(files: list[UploadFile]) -> dict[str, Any]:
         mime = resolve_upload_mime(filename, file.content_type)
         if mime == "application/pdf":
             filenames.append(filename)
+            pdf_files.append({"filename": filename, "data": data})
             pdf_text = extract_pdf_text(data)
             if pdf_text:
                 pdf_text_parts.append(f"PDF text from {filename}:\n{pdf_text}")
@@ -529,7 +531,86 @@ async def read_uploads(files: list[UploadFile]) -> dict[str, Any]:
                 "dataUrl": f"data:{normalized_mime};base64,{base64.b64encode(normalized_data).decode('ascii')}",
             }
         )
-    return {"images": images, "filenames": filenames, "pdfText": "\n\n".join(pdf_text_parts)}
+    return {"images": images, "filenames": filenames, "pdfText": "\n\n".join(pdf_text_parts), "pdfFiles": pdf_files}
+
+
+def render_pdf_uploads(pdf_files: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """Render PDF pages to JPEG images for the vision path. This is the rescue
+    for image-scan PDFs whose embedded text layer is missing or OCR garbage —
+    the pages are usually perfectly readable as pictures."""
+    try:
+        import io
+
+        import pypdfium2
+    except ImportError:  # pragma: no cover - rendering support is optional at runtime.
+        return []
+    max_pages = int_env("AI_PDF_RENDER_MAX_PAGES", "4")
+    max_side = int_env("AI_IMAGE_MAX_SIDE_PX", "2000")
+    images: list[dict[str, str]] = []
+    for pdf_file in pdf_files:
+        try:
+            document = pypdfium2.PdfDocument(pdf_file["data"])
+            try:
+                for page_index in range(min(len(document), max_pages)):
+                    page = document[page_index]
+                    rendered = page.render(scale=2.0).to_pil()
+                    if max(rendered.size) > max_side:
+                        rendered.thumbnail((max_side, max_side))
+                    if rendered.mode not in ("RGB", "L"):
+                        rendered = rendered.convert("RGB")
+                    buffer = io.BytesIO()
+                    rendered.save(buffer, format="JPEG", quality=82)
+                    images.append(
+                        {
+                            "filename": f"{pdf_file['filename']} page {page_index + 1}",
+                            "mime": "image/jpeg",
+                            "dataUrl": f"data:image/jpeg;base64,{base64.b64encode(buffer.getvalue()).decode('ascii')}",
+                        }
+                    )
+            finally:
+                document.close()
+        except Exception:
+            continue
+    return images
+
+
+def extract_menu_with_render_fallback(
+    upload_data: dict[str, Any],
+    ocr_text: str,
+    profile_json: str,
+    source_label: str,
+) -> tuple[dict[str, Any], str, str]:
+    """Run the normal extraction; when a PDF's text layer is unusable (missing,
+    or the AI refuses it as unstructured), render its pages and retry through
+    the vision path. Returns (menu, parser_used, pdf_text_used_for_coverage)."""
+    images = upload_data["images"]
+    filenames = upload_data["filenames"]
+    pdf_text = upload_data["pdfText"]
+    pdf_files = upload_data.get("pdfFiles") or []
+
+    def render_and_extract() -> tuple[dict[str, Any], str, str]:
+        rendered = render_pdf_uploads(pdf_files)
+        if not rendered:
+            raise HTTPException(
+                status_code=422,
+                detail="This PDF has no readable menu text and its pages could not be rendered. Try clear photos of the menu instead.",
+            )
+        menu, _ = extract_menu_with_ai(rendered, ocr_text, profile_json, filenames, "", source_label)
+        # The text layer proved useless; drop it so coverage stays honest.
+        return menu, "openai-pdf-render-vision", ""
+
+    # No images and no usable text at all: go straight to rendering.
+    if not images and pdf_files and len(pdf_text.split()) < int_env("AI_PDF_MIN_TEXT_WORDS", "30"):
+        return render_and_extract()
+
+    try:
+        menu, parser_used = extract_menu_with_ai(images, ocr_text, profile_json, filenames, pdf_text, source_label)
+        return menu, parser_used, pdf_text
+    except HTTPException as exc:
+        # 422 on a text-only PDF scan usually means an OCR-garbage text layer.
+        if exc.status_code == 422 and pdf_files and not images:
+            return render_and_extract()
+        raise
 
 
 def extract_response_text(payload: dict[str, Any]) -> str:
@@ -1597,9 +1678,9 @@ async def scan_menu(
             menu = normalize_menu(mock_menu())
             parser_used = "ai-mock"
         else:
-            if not images and not pdf_text:
+            if not images and not pdf_text and not upload_data.get("pdfFiles"):
                 raise HTTPException(status_code=400, detail="No readable image or PDF menu text was uploaded.")
-            menu, parser_used = extract_menu_with_ai(images, ocr_text, profile_json, filenames, pdf_text, source_label)
+            menu, parser_used, pdf_text = extract_menu_with_render_fallback(upload_data, ocr_text, profile_json, source_label)
 
         response = build_scan_response(
             menu=menu,
