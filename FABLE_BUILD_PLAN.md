@@ -1,6 +1,6 @@
 # What 2 Eat — Build-to-Done Plan (Fable Job)
 
-**Owner:** Justice · **Mission model:** Fable (`claude-fable-5`) · **Repo:** `/Users/justice/Documents/What 2 Eat (Claude)`
+**Owner:** Justice · **Mission model:** Fable (`claude-fable-5`) · **Repo:** `/Users/justice/Projects/what-2-eat`
 
 This is an execution job, not a discussion doc. Fable: read this top-to-bottom, then grind the phases **in order**. Every task cites real `file:line` anchors so you can go straight to the code. Commit after each phase. Keep the log at the bottom current.
 
